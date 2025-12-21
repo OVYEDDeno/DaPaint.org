@@ -6,9 +6,8 @@ node_modules/
 # Build output (will be generated during build)
 web-build/
 dist/
-theme.css
 
-# Development
+# Development - Environment variables
 .env
 .env.local
 .env.development.local
@@ -31,3 +30,12 @@ Thumbs.db
 # Native builds
 ios/
 android/
+
+# Test/Debug files
+*.log
+debug*.ts
+debug*.js
+test-*.js
+apply-*.js
+simple-*.js
+final-*.js
