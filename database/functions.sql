@@ -185,6 +185,59 @@ BEGIN
     AND starts_at <= NOW();
   
   -- Mark as draw DaPaints that have passed 24 hours since start time with no submissions
+  -- First, insert into done_dapaints table
+  INSERT INTO done_dapaints (
+    original_dapaint_id,
+    host_display_name,
+    foe_display_name,
+    dapaint,
+    host_id,
+    winner_id,
+    loser_id,
+    was_draw,
+    starts_at,
+    completed_at,
+    required_winstreak,
+    host_winstreak_at_completion,
+    winner_winstreak_at_completion,
+    participants_snapshot,
+    archived_at
+  )
+  SELECT 
+    id as original_dapaint_id,
+    host_display_name,
+    foe_display_name,
+    dapaint,
+    host_id,
+    NULL as winner_id,
+    NULL as loser_id,
+    TRUE as was_draw,
+    starts_at,
+    NOW() as completed_at,
+    required_winstreak,
+    (SELECT current_winstreak FROM users WHERE id = host_id) as host_winstreak_at_completion,
+    NULL as winner_winstreak_at_completion,
+    CASE 
+      WHEN dapaint_type = 'team' THEN 
+        (SELECT jsonb_agg(jsonb_build_object('user_id', user_id, 'team', team, 'display_name', 
+          (SELECT display_name FROM users WHERE id = dp.user_id))) 
+         FROM dapaint_participants dp WHERE dp.dapaint_id = id)
+      ELSE '[]'::jsonb
+    END as participants_snapshot,
+    NOW() as archived_at
+  FROM dapaints
+  WHERE status = 'live'
+    AND (
+      -- 1v1 DaPaints with no submissions
+      (dapaint_type = '1v1' AND submitted_winner_id IS NULL AND submitted_loser_id IS NULL AND starts_at <= NOW() - INTERVAL '24 hours')
+      OR
+      -- Team DaPaints with no submissions
+      (dapaint_type = 'team' AND starts_at <= NOW() - INTERVAL '24 hours' AND NOT EXISTS (
+        SELECT 1 FROM dapaint_participants WHERE dapaint_id = dapaints.id AND result_submitted = true
+      ))
+    );
+  
+  -- Then update the original records
   UPDATE dapaints
   SET status = 'completed',
       submitted_winner_id = NULL,
@@ -331,6 +384,50 @@ BEGIN
         UPDATE users SET current_winstreak = GREATEST(0, current_winstreak - 1) WHERE id = v_dapaint.foe_id;
         
         -- Mark as draw and move to done_dapaints
+        -- First, insert into done_dapaints table
+        INSERT INTO done_dapaints (
+          original_dapaint_id,
+          host_display_name,
+          foe_display_name,
+          dapaint,
+          host_id,
+          winner_id,
+          loser_id,
+          was_draw,
+          starts_at,
+          completed_at,
+          required_winstreak,
+          host_winstreak_at_completion,
+          winner_winstreak_at_completion,
+          participants_snapshot,
+          archived_at
+        )
+        SELECT 
+          id as original_dapaint_id,
+          host_display_name,
+          foe_display_name,
+          dapaint,
+          host_id,
+          submitted_winner_id as winner_id,
+          submitted_loser_id as loser_id,
+          (submitted_winner_id IS NULL AND submitted_loser_id IS NULL) as was_draw,
+          starts_at,
+          NOW() as completed_at,
+          required_winstreak,
+          (SELECT current_winstreak FROM users WHERE id = host_id) as host_winstreak_at_completion,
+          (SELECT current_winstreak FROM users WHERE id = submitted_winner_id) as winner_winstreak_at_completion,
+          CASE 
+            WHEN dapaint_type = 'team' THEN 
+              (SELECT jsonb_agg(jsonb_build_object('user_id', user_id, 'team', team, 'display_name', 
+                (SELECT display_name FROM users WHERE id = dp.user_id))) 
+               FROM dapaint_participants dp WHERE dp.dapaint_id = id)
+            ELSE '[]'::jsonb
+          END as participants_snapshot,
+          NOW() as archived_at
+        FROM dapaints 
+        WHERE id = p_dapaint_id;
+        
+        -- Then update the original record
         UPDATE dapaints 
         SET status = 'completed', submitted_winner_id = NULL, submitted_loser_id = NULL
         WHERE id = p_dapaint_id;
@@ -350,7 +447,51 @@ BEGIN
         UPDATE users SET current_winstreak = current_winstreak + 1 WHERE id = v_winner_id;
         UPDATE users SET current_winstreak = 0 WHERE id != v_winner_id AND id IN (v_dapaint.host_id, v_dapaint.foe_id);
         
-        -- Mark as completed
+        -- Mark as completed and move to done_dapaints
+        -- First, insert into done_dapaints table
+        INSERT INTO done_dapaints (
+          original_dapaint_id,
+          host_display_name,
+          foe_display_name,
+          dapaint,
+          host_id,
+          winner_id,
+          loser_id,
+          was_draw,
+          starts_at,
+          completed_at,
+          required_winstreak,
+          host_winstreak_at_completion,
+          winner_winstreak_at_completion,
+          participants_snapshot,
+          archived_at
+        )
+        SELECT 
+          id as original_dapaint_id,
+          host_display_name,
+          foe_display_name,
+          dapaint,
+          host_id,
+          submitted_winner_id as winner_id,
+          submitted_loser_id as loser_id,
+          (submitted_winner_id IS NULL AND submitted_loser_id IS NULL) as was_draw,
+          starts_at,
+          NOW() as completed_at,
+          required_winstreak,
+          (SELECT current_winstreak FROM users WHERE id = host_id) as host_winstreak_at_completion,
+          (SELECT current_winstreak FROM users WHERE id = submitted_winner_id) as winner_winstreak_at_completion,
+          CASE 
+            WHEN dapaint_type = 'team' THEN 
+              (SELECT jsonb_agg(jsonb_build_object('user_id', user_id, 'team', team, 'display_name', 
+                (SELECT display_name FROM users WHERE id = dp.user_id))) 
+               FROM dapaint_participants dp WHERE dp.dapaint_id = id)
+            ELSE '[]'::jsonb
+          END as participants_snapshot,
+          NOW() as archived_at
+        FROM dapaints 
+        WHERE id = p_dapaint_id;
+        
+        -- Then update the original record
         UPDATE dapaints 
         SET status = 'completed', submitted_winner_id = v_winner_id
         WHERE id = p_dapaint_id;
@@ -413,7 +554,51 @@ BEGIN
           SELECT user_id FROM dapaint_participants WHERE dapaint_id = p_dapaint_id
         );
         
-        -- Mark as draw
+        -- Mark as draw and move to done_dapaints
+        -- First, insert into done_dapaints table
+        INSERT INTO done_dapaints (
+          original_dapaint_id,
+          host_display_name,
+          foe_display_name,
+          dapaint,
+          host_id,
+          winner_id,
+          loser_id,
+          was_draw,
+          starts_at,
+          completed_at,
+          required_winstreak,
+          host_winstreak_at_completion,
+          winner_winstreak_at_completion,
+          participants_snapshot,
+          archived_at
+        )
+        SELECT 
+          id as original_dapaint_id,
+          host_display_name,
+          foe_display_name,
+          dapaint,
+          host_id,
+          submitted_winner_id as winner_id,
+          submitted_loser_id as loser_id,
+          (submitted_winner_id IS NULL AND submitted_loser_id IS NULL) as was_draw,
+          starts_at,
+          NOW() as completed_at,
+          required_winstreak,
+          (SELECT current_winstreak FROM users WHERE id = host_id) as host_winstreak_at_completion,
+          (SELECT current_winstreak FROM users WHERE id = submitted_winner_id) as winner_winstreak_at_completion,
+          CASE 
+            WHEN dapaint_type = 'team' THEN 
+              (SELECT jsonb_agg(jsonb_build_object('user_id', user_id, 'team', team, 'display_name', 
+                (SELECT display_name FROM users WHERE id = dp.user_id))) 
+               FROM dapaint_participants dp WHERE dp.dapaint_id = id)
+            ELSE '[]'::jsonb
+          END as participants_snapshot,
+          NOW() as archived_at
+        FROM dapaints 
+        WHERE id = p_dapaint_id;
+        
+        -- Then update the original record
         UPDATE dapaints 
         SET status = 'completed', submitted_winner_id = NULL, submitted_loser_id = NULL
         WHERE id = p_dapaint_id;
@@ -451,7 +636,51 @@ BEGIN
           );
         END IF;
         
-        -- Mark as completed
+        -- Mark as completed and move to done_dapaints
+        -- First, insert into done_dapaints table
+        INSERT INTO done_dapaints (
+          original_dapaint_id,
+          host_display_name,
+          foe_display_name,
+          dapaint,
+          host_id,
+          winner_id,
+          loser_id,
+          was_draw,
+          starts_at,
+          completed_at,
+          required_winstreak,
+          host_winstreak_at_completion,
+          winner_winstreak_at_completion,
+          participants_snapshot,
+          archived_at
+        )
+        SELECT 
+          id as original_dapaint_id,
+          host_display_name,
+          foe_display_name,
+          dapaint,
+          host_id,
+          NULL as winner_id,
+          NULL as loser_id,
+          (submitted_winner_id IS NULL AND submitted_loser_id IS NULL) as was_draw,
+          starts_at,
+          NOW() as completed_at,
+          required_winstreak,
+          (SELECT current_winstreak FROM users WHERE id = host_id) as host_winstreak_at_completion,
+          NULL as winner_winstreak_at_completion,
+          CASE 
+            WHEN dapaint_type = 'team' THEN 
+              (SELECT jsonb_agg(jsonb_build_object('user_id', user_id, 'team', team, 'display_name', 
+                (SELECT display_name FROM users WHERE id = dp.user_id))) 
+               FROM dapaint_participants dp WHERE dp.dapaint_id = id)
+            ELSE '[]'::jsonb
+          END as participants_snapshot,
+          NOW() as archived_at
+        FROM dapaints 
+        WHERE id = p_dapaint_id;
+        
+        -- Then update the original record
         UPDATE dapaints 
         SET status = 'completed'
         WHERE id = p_dapaint_id;
@@ -478,5 +707,204 @@ LANGUAGE plpgsql
 AS $$
 BEGIN
   PERFORM cleanup_unmatched_dapaints();
+END;
+$$;
+
+-- Function to resolve disputes and update DaPaint outcomes
+CREATE OR REPLACE FUNCTION resolve_dapaint_dispute(
+  p_dapaint_id UUID,
+  p_winner_id UUID
+)
+RETURNS JSON
+LANGUAGE plpgsql
+AS $$
+DECLARE
+  v_dapaint RECORD;
+  v_loser_id UUID;
+BEGIN
+  -- Get DaPaint details
+  SELECT * INTO v_dapaint
+  FROM dapaints
+  WHERE id = p_dapaint_id;
+  
+  IF NOT FOUND THEN
+    RETURN json_build_object('success', false, 'message', 'DaPaint not found');
+  END IF;
+  
+  -- Check if DaPaint is in dispute
+  IF v_dapaint.status != 'disputed' THEN
+    RETURN json_build_object('success', false, 'message', 'DaPaint is not in dispute');
+  END IF;
+  
+  -- Handle 1v1 DaPaints
+  IF v_dapaint.dapaint_type = '1v1' THEN
+    -- Determine loser
+    IF p_winner_id = v_dapaint.host_id THEN
+      v_loser_id := v_dapaint.foe_id;
+    ELSIF p_winner_id = v_dapaint.foe_id THEN
+      v_loser_id := v_dapaint.host_id;
+    ELSE
+      RETURN json_build_object('success', false, 'message', 'Winner is not a participant in this DaPaint');
+    END IF;
+    
+    -- Update winstreaks
+    UPDATE users SET current_winstreak = current_winstreak + 1 WHERE id = p_winner_id;
+    UPDATE users SET current_winstreak = 0 WHERE id = v_loser_id;
+    
+    -- Move to done_dapaints and update
+    INSERT INTO done_dapaints (
+      original_dapaint_id,
+      host_display_name,
+      foe_display_name,
+      dapaint,
+      host_id,
+      winner_id,
+      loser_id,
+      was_draw,
+      starts_at,
+      completed_at,
+      required_winstreak,
+      host_winstreak_at_completion,
+      winner_winstreak_at_completion,
+      participants_snapshot,
+      archived_at
+    )
+    SELECT 
+      id as original_dapaint_id,
+      host_display_name,
+      foe_display_name,
+      dapaint,
+      host_id,
+      p_winner_id as winner_id,
+      v_loser_id as loser_id,
+      FALSE as was_draw,
+      starts_at,
+      NOW() as completed_at,
+      required_winstreak,
+      (SELECT current_winstreak FROM users WHERE id = host_id) as host_winstreak_at_completion,
+      (SELECT current_winstreak FROM users WHERE id = p_winner_id) as winner_winstreak_at_completion,
+      CASE 
+        WHEN dapaint_type = 'team' THEN 
+          (SELECT jsonb_agg(jsonb_build_object('user_id', user_id, 'team', team, 'display_name', 
+            (SELECT display_name FROM users WHERE id = dp.user_id))) 
+           FROM dapaint_participants dp WHERE dp.dapaint_id = id)
+        ELSE '[]'::jsonb
+      END as participants_snapshot,
+      NOW() as archived_at
+    FROM dapaints 
+    WHERE id = p_dapaint_id;
+    
+    UPDATE dapaints 
+    SET status = 'completed', 
+        submitted_winner_id = p_winner_id,
+        submitted_loser_id = v_loser_id
+    WHERE id = p_dapaint_id;
+    
+    -- Update dispute status
+    UPDATE dapaint_disputes 
+    SET status = 'resolved', resolved_at = NOW()
+    WHERE dapaint_id = p_dapaint_id;
+    
+    RETURN json_build_object('success', true, 'message', '1v1 DaPaint dispute resolved successfully');
+  
+  -- Handle team DaPaints
+  ELSIF v_dapaint.dapaint_type = 'team' THEN
+    -- For team DaPaints, we need to update winstreaks for all team members
+    -- Winner team members get +1, loser team members get reset to 0
+    
+    -- Determine which team won
+    IF EXISTS (SELECT 1 FROM dapaint_participants WHERE dapaint_id = p_dapaint_id AND user_id = p_winner_id AND team = 'host') THEN
+      -- Host team won
+      -- Update winstreaks for host team (winners)
+      UPDATE users 
+      SET current_winstreak = current_winstreak + 1
+      WHERE id IN (
+        SELECT user_id FROM dapaint_participants WHERE dapaint_id = p_dapaint_id AND team = 'host'
+      );
+      
+      -- Reset winstreaks for foe team (losers)
+      UPDATE users 
+      SET current_winstreak = 0
+      WHERE id IN (
+        SELECT user_id FROM dapaint_participants WHERE dapaint_id = p_dapaint_id AND team = 'foe'
+      );
+    ELSIF EXISTS (SELECT 1 FROM dapaint_participants WHERE dapaint_id = p_dapaint_id AND user_id = p_winner_id AND team = 'foe') THEN
+      -- Foe team won
+      -- Update winstreaks for foe team (winners)
+      UPDATE users 
+      SET current_winstreak = current_winstreak + 1
+      WHERE id IN (
+        SELECT user_id FROM dapaint_participants WHERE dapaint_id = p_dapaint_id AND team = 'foe'
+      );
+      
+      -- Reset winstreaks for host team (losers)
+      UPDATE users 
+      SET current_winstreak = 0
+      WHERE id IN (
+        SELECT user_id FROM dapaint_participants WHERE dapaint_id = p_dapaint_id AND team = 'host'
+      );
+    ELSE
+      RETURN json_build_object('success', false, 'message', 'Winner is not a participant in this Team DaPaint');
+    END IF;
+    
+    -- Move to done_dapaints and update
+    INSERT INTO done_dapaints (
+      original_dapaint_id,
+      host_display_name,
+      foe_display_name,
+      dapaint,
+      host_id,
+      winner_id,
+      loser_id,
+      was_draw,
+      starts_at,
+      completed_at,
+      required_winstreak,
+      host_winstreak_at_completion,
+      winner_winstreak_at_completion,
+      participants_snapshot,
+      archived_at
+    )
+    SELECT 
+      id as original_dapaint_id,
+      host_display_name,
+      foe_display_name,
+      dapaint,
+      host_id,
+      NULL as winner_id,
+      NULL as loser_id,
+      FALSE as was_draw,
+      starts_at,
+      NOW() as completed_at,
+      required_winstreak,
+      (SELECT current_winstreak FROM users WHERE id = host_id) as host_winstreak_at_completion,
+      NULL as winner_winstreak_at_completion,
+      CASE 
+        WHEN dapaint_type = 'team' THEN 
+          (SELECT jsonb_agg(jsonb_build_object('user_id', user_id, 'team', team, 'display_name', 
+            (SELECT display_name FROM users WHERE id = dp.user_id))) 
+           FROM dapaint_participants dp WHERE dp.dapaint_id = id)
+        ELSE '[]'::jsonb
+      END as participants_snapshot,
+      NOW() as archived_at
+    FROM dapaints 
+    WHERE id = p_dapaint_id;
+    
+    UPDATE dapaints 
+    SET status = 'completed'
+    WHERE id = p_dapaint_id;
+    
+    -- Update dispute status
+    UPDATE dapaint_disputes 
+    SET status = 'resolved', resolved_at = NOW()
+    WHERE dapaint_id = p_dapaint_id;
+    
+    RETURN json_build_object('success', true, 'message', 'Team DaPaint dispute resolved successfully');
+  END IF;
+  
+  RETURN json_build_object('success', true, 'message', 'Dispute resolved successfully');
+EXCEPTION
+  WHEN OTHERS THEN
+    RETURN json_build_object('success', false, 'message', 'Error resolving dispute: ' || SQLERRM);
 END;
 $$;

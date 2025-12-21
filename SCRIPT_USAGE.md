@@ -1,49 +1,55 @@
-# DaPaint Cleanup Script Usage
+# Script Usage Guide
 
-## Overview
-The `scripts/fix-data-integrity.js` script is used to identify and fix data integrity violations in the DaPaint database. It ensures that users are only in one active DaPaint at a time and handles the 24-hour submission rule.
+## Test DaPaint Outcomes Script
 
-## Prerequisites
-1. Node.js installed on your system
-2. Properly configured `.env` file with Supabase credentials
-3. Database functions from `database/functions.sql` already applied
+This script tests the DaPaint outcome resolution and dispute handling functionality.
 
-## Running the Script
+### Running the Test Script
 
-### Basic Usage
+```bash
+node scripts/test-dapaint-outcomes.js
+```
+
+### What the Script Tests
+
+1. **1v1 Normal Resolution** - Tests normal win/loss resolution for 1v1 DaPaints
+2. **1v1 Dispute Creation** - Tests dispute creation when both players claim victory
+3. **Team Normal Resolution** - Tests normal resolution for team DaPaints
+4. **Timeout Scenario** - Tests the 24-hour timeout functionality
+
+### Manual Testing
+
+You can also manually test the functionality through the Supabase dashboard or by using the database functions directly:
+
+1. **Process Result Submission**:
+   ```sql
+   SELECT process_result_submission(
+     'your-dapaint-id'::uuid,
+     'your-user-id'::uuid,
+     true, -- claimed_won
+     'https://example.com/proof.jpg' -- proof_url
+   );
+   ```
+
+2. **Resolve Dispute**:
+   ```sql
+   SELECT resolve_dapaint_dispute(
+     'your-dapaint-id'::uuid,
+     'winner-user-id'::uuid
+   );
+   ```
+
+3. **Run Cleanup**:
+   ```sql
+   SELECT cleanup_unmatched_dapaints();
+   ```
+
+## Data Integrity Fix Script
+
+The existing `fix-data-integrity.js` script can be run with:
+
 ```bash
 node scripts/fix-data-integrity.js
 ```
 
-### What the Script Does
-1. Runs automated cleanup functions to handle time-based rules
-2. Scans for all data integrity violations:
-   - Users hosting multiple 1v1 DaPaints
-   - Users as foes in multiple 1v1 DaPaints
-   - Users in multiple team DaPaints
-3. Displays findings
-4. Prompts for confirmation before making changes
-5. Fixes violations by applying proper 48-hour logic
-
-### Script Output
-- **No violations found**: Script exits with success message
-- **Violations found**: Script lists all violations and asks for confirmation to fix them
-
-### Safety Features
-- Interactive confirmation before making any database changes
-- Detailed logging of all actions taken
-- Graceful error handling
-- No changes made without explicit user approval
-
-## When to Run the Script
-- After initial deployment to clean up any existing data integrity issues
-- Periodically as a maintenance task
-- When troubleshooting reported data issues
-- After database migrations or schema changes
-
-## Troubleshooting
-If you encounter errors:
-1. Check that your `.env` file contains the correct Supabase credentials
-2. Verify that the database functions have been applied
-3. Ensure you have network connectivity to your Supabase instance
-4. Check the script output for specific error messages
+This script identifies and fixes data integrity violations in the DaPaint database.
