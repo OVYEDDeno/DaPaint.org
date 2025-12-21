@@ -1,16 +1,25 @@
 // app/_layout.tsx
 import { Stack } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { View, StyleSheet } from 'react-native';
+import { View, StyleSheet, Platform } from 'react-native';
 import { supabase } from '../lib/supabase';
 import logger from '../lib/logger';
 import BackgroundLayer from '../components/ui/BackgroundLayer';
+import Head from 'expo-router/head';
 
 export default function RootLayout() {
   const [sessionChecked, setSessionChecked] = useState(false);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
 
   useEffect(() => {
+    // Web-specific: Load theme.css
+    if (Platform.OS === 'web') {
+      const link = document.createElement('link');
+      link.rel = 'stylesheet';
+      link.href = '/theme.css';
+      document.head.appendChild(link);
+    }
+
     // Check for existing session
     const checkSession = async () => {
       try {
@@ -65,13 +74,26 @@ export default function RootLayout() {
   }
 
   return (
-    <View style={styles.root}>
-      <BackgroundLayer />
-      <Stack screenOptions={{ headerShown: false }}>
-        <Stack.Screen name="(auth)" />
-        <Stack.Screen name="(tabs)" />
-      </Stack>
-    </View>
+    <>
+      {Platform.OS === 'web' && (
+        <Head>
+          <title>DaPaint.org - Compete. Win. Get Paid.</title>
+          <meta name="description" content="Create and join competitive challenges. Win streaks earn real money." />
+          <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
+          <meta property="og:title" content="DaPaint.org" />
+          <meta property="og:description" content="Compete. Win. Get Paid." />
+          <meta property="og:type" content="website" />
+          <link rel="icon" href="/favicon.ico" />
+        </Head>
+      )}
+      <View style={styles.root}>
+        <BackgroundLayer />
+        <Stack screenOptions={{ headerShown: false }}>
+          <Stack.Screen name="(auth)" />
+          <Stack.Screen name="(tabs)" />
+        </Stack>
+      </View>
+    </>
   );
 }
 
