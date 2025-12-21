@@ -327,14 +327,14 @@ export default function ActiveDaPaint({
       const url = proofUrl.trim();
       if (!url) {
         Alert.alert(
-          "Error",
-          "Please provide a proof link (Instagram, TikTok, YouTube, etc.)"
+          "Proof Required",
+          "Please provide a proof link (Instagram, TikTok, YouTube, etc.) in the input field above before submitting your result."
         );
         return;
       }
       if (!url.startsWith("http://") && !url.startsWith("https://")) {
         Alert.alert(
-          "Error",
+          "Invalid URL",
           "Please enter a valid URL starting with http:// or https://"
         );
         return;
@@ -352,15 +352,15 @@ export default function ActiveDaPaint({
         if (error) throw error;
 
         Alert.alert(
-          "Submitted",
-          claimedWon ? "You claimed the win." : "You submitted your result.",
+          "Result Submitted",
+          claimedWon ? "You claimed the win!" : "You submitted your result.",
           [{ text: "OK", onPress: () => loadSubmissions() }]
         );
 
         setProofUrl("");
       } catch (error: any) {
         logger.error("Error submitting result:", error);
-        Alert.alert("Error", error.message || "Failed to submit result");
+        Alert.alert("Submission Failed", error.message || "Failed to submit result. Please try again.");
       } finally {
         setLoading(false);
       }
@@ -530,7 +530,30 @@ export default function ActiveDaPaint({
             <Text style={styles.detailLabel}>⏳ Countdown</Text>
             <Text style={styles.detailValue}>
               {hasStarted
-                ? "Started"
+                ? (() => {
+                    // Calculate time remaining for submissions (24 hours after start)
+                    const startTime = new Date(dapaint.starts_at).getTime();
+                    const submissionDeadline = startTime + (24 * 60 * 60 * 1000); // 24 hours in milliseconds
+                    const now = Date.now();
+                    const timeLeftMs = submissionDeadline - now;
+                    
+                    if (timeLeftMs <= 0) {
+                      return "Submission deadline passed";
+                    }
+                    
+                    const totalHours = timeLeftMs / (1000 * 60 * 60);
+                    const days = Math.floor(totalHours / 24);
+                    const hours = Math.floor(totalHours % 24);
+                    const minutes = Math.floor((totalHours * 60) % 60);
+
+                    if (days > 0) {
+                      return `${days}d ${hours}h left to submit`;
+                    } else if (totalHours >= 1) {
+                      return `${hours}h ${minutes}m left to submit`;
+                    } else {
+                      return `${Math.floor(totalHours * 60)}m left to submit`;
+                    }
+                  })()
                 : (() => {
                     const totalHours = Math.max(0, hoursUntilStart);
                     const days = Math.floor(totalHours / 24);
@@ -610,12 +633,16 @@ export default function ActiveDaPaint({
                   onChangeText={setProofUrl}
                   autoCapitalize="none"
                 />
+                <Text style={styles.helperText}>
+                  🔗 Please provide proof of your result (required)
+                </Text>
 
                 <View style={styles.resultRow}>
                   <Pressable
                     style={[
                       styles.resultBtn,
                       { backgroundColor: theme.colors.success },
+                      loading && styles.btnDisabled,
                     ]}
                     onPress={() => handleSubmitResult(true)}
                     disabled={loading}
@@ -627,6 +654,7 @@ export default function ActiveDaPaint({
                     style={[
                       styles.resultBtn,
                       { backgroundColor: theme.colors.error },
+                      loading && styles.btnDisabled,
                     ]}
                     onPress={() => handleSubmitResult(false)}
                     disabled={loading}
@@ -840,7 +868,13 @@ const styles = StyleSheet.create({
     borderColor: theme.colors.border,
     color: theme.colors.textPrimary,
     ...theme.type.bodyLarge,
+    marginBottom: theme.space.xs,
+  },
+  helperText: {
+    ...theme.type.bodySmall,
+    color: theme.colors.textSecondary,
     marginBottom: theme.space.sm,
+    fontStyle: "italic",
   },
   resultRow: { flexDirection: "row", gap: theme.space.sm },
   resultBtn: {
@@ -850,6 +884,9 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   resultBtnText: { ...theme.type.labelMedium, color: "#ffffff" },
+  btnDisabled: {
+    opacity: 0.6,
+  },
 
   subTitle: {
     ...theme.type.labelLarge,

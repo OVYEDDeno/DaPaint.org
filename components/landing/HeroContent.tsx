@@ -51,7 +51,7 @@ const styles = StyleSheet.create({
   // Social proof positioned right below logo
   socialProofContainer: {
     position: "absolute",
-    top: 90, // Logo height + spacing
+    top: 100, // Logo height + spacing
     left: 0,
     right: 0,
     alignItems: "center",

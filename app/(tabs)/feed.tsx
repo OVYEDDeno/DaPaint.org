@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import { View, Text, StyleSheet, Pressable, Alert, Platform, Image, LayoutChangeEvent } from "react-native";
 import { useRouter } from "expo-router";
 import { supabase } from "../../lib/supabase";
@@ -86,6 +86,36 @@ export default function FeedScreen() {
   useEffect(() => {
     if (userData) loadFeed();
   }, [userData, loadFeed]);
+
+  // Real-time subscription for user profile changes (including winstreak updates)
+  useEffect(() => {
+    if (!userData?.id) return;
+
+    const channel = supabase
+      .channel(`user-profile-changes:${userData.id}`)
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'users',
+          filter: `id=eq.${userData.id}`
+        },
+        async (payload) => {
+          // Update local user data when profile changes
+          const updatedUser = (payload as any).new;
+          setUserData(updatedUser);
+          
+          // Also update the cached user data in userDataManager
+          userDataManager.updateCachedUserData(updatedUser);
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [userData?.id]);
 
   const handleCreateDaPaint = () => router.push("/(tabs)/active");
   const handleFeelingLucky = () => setActiveTab("explore");
@@ -211,9 +241,6 @@ export default function FeedScreen() {
     return (
       <AdScreen
         onComplete={handleAdComplete}
-        username={userData?.display_name}
-        winstreakGoal={30}
-        rewardAmount="$1,000,000"
       />
     );
   }

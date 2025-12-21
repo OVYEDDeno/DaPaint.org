@@ -234,6 +234,243 @@ BEGIN
 END;
 $$;
 
+-- Function to process result submissions for DaPaints
+CREATE OR REPLACE FUNCTION process_result_submission(
+  p_dapaint_id UUID,
+  p_user_id UUID,
+  p_claimed_won BOOLEAN,
+  p_proof_url TEXT
+)
+RETURNS JSON
+LANGUAGE plpgsql
+AS $$
+DECLARE
+  v_dapaint RECORD;
+  v_host_submission INTEGER;
+  v_foe_submission INTEGER;
+  v_host_claimed_won INTEGER;
+  v_foe_claimed_won INTEGER;
+  v_winner_id UUID;
+  v_conflict_type TEXT;
+BEGIN
+  -- Get DaPaint details
+  SELECT * INTO v_dapaint
+  FROM dapaints
+  WHERE id = p_dapaint_id;
+  
+  IF NOT FOUND THEN
+    RETURN json_build_object('success', false, 'message', 'DaPaint not found');
+  END IF;
+  
+  -- Check if DaPaint is in the right state for submissions
+  IF v_dapaint.status != 'live' THEN
+    RETURN json_build_object('success', false, 'message', 'DaPaint is not in progress');
+  END IF;
+  
+  -- Handle 1v1 DaPaints
+  IF v_dapaint.dapaint_type = '1v1' THEN
+    -- Update the DaPaint with the submission
+    IF p_user_id = v_dapaint.host_id THEN
+      -- Host submission
+      UPDATE dapaints
+      SET 
+        submitted_winner_id = CASE WHEN p_claimed_won THEN v_dapaint.host_id ELSE NULL END,
+        submitted_loser_id = CASE WHEN NOT p_claimed_won THEN v_dapaint.host_id ELSE NULL END
+      WHERE id = p_dapaint_id;
+    ELSIF p_user_id = v_dapaint.foe_id THEN
+      -- Foe submission
+      UPDATE dapaints
+      SET 
+        submitted_winner_id = CASE WHEN p_claimed_won THEN v_dapaint.foe_id ELSE NULL END,
+        submitted_loser_id = CASE WHEN NOT p_claimed_won THEN v_dapaint.foe_id ELSE NULL END
+      WHERE id = p_dapaint_id;
+    ELSE
+      RETURN json_build_object('success', false, 'message', 'User is not a participant in this DaPaint');
+    END IF;
+    
+    -- Check if both participants have submitted
+    SELECT 
+      CASE WHEN submitted_winner_id IS NOT NULL OR submitted_loser_id IS NOT NULL THEN 1 ELSE 0 END
+    INTO v_host_submission
+    FROM dapaints
+    WHERE id = p_dapaint_id AND (host_id = v_dapaint.host_id OR foe_id = v_dapaint.host_id);
+    
+    SELECT 
+      CASE WHEN submitted_winner_id IS NOT NULL OR submitted_loser_id IS NOT NULL THEN 1 ELSE 0 END
+    INTO v_foe_submission
+    FROM dapaints
+    WHERE id = p_dapaint_id AND (host_id = v_dapaint.foe_id OR foe_id = v_dapaint.foe_id);
+    
+    -- If both have submitted, resolve the outcome
+    IF v_host_submission = 1 AND v_foe_submission = 1 THEN
+      -- Get the actual claims
+      SELECT 
+        CASE WHEN submitted_winner_id = host_id THEN 1 ELSE 0 END
+      INTO v_host_claimed_won
+      FROM dapaints
+      WHERE id = p_dapaint_id;
+      
+      SELECT 
+        CASE WHEN submitted_winner_id = foe_id THEN 1 ELSE 0 END
+      INTO v_foe_claimed_won
+      FROM dapaints
+      WHERE id = p_dapaint_id;
+      
+      -- Both claimed they won - create dispute
+      IF v_host_claimed_won = 1 AND v_foe_claimed_won = 1 THEN
+        v_conflict_type := 'both_won';
+        INSERT INTO dapaint_disputes (dapaint_id, dispute_type, status)
+        VALUES (p_dapaint_id, v_conflict_type, 'pending');
+        
+        RETURN json_build_object('success', true, 'message', 'Both players claimed victory. Dispute created for review.');
+      
+      -- Both claimed they lost - reset both winstreaks
+      ELSIF v_host_claimed_won = 0 AND v_foe_claimed_won = 0 THEN
+        -- Reset both winstreaks
+        UPDATE users SET current_winstreak = GREATEST(0, current_winstreak - 1) WHERE id = v_dapaint.host_id;
+        UPDATE users SET current_winstreak = GREATEST(0, current_winstreak - 1) WHERE id = v_dapaint.foe_id;
+        
+        -- Mark as draw and move to done_dapaints
+        UPDATE dapaints 
+        SET status = 'completed', submitted_winner_id = NULL, submitted_loser_id = NULL
+        WHERE id = p_dapaint_id;
+        
+        RETURN json_build_object('success', true, 'message', 'Both players claimed loss. Winstreaks adjusted and match marked as draw.');
+      
+      -- Normal resolution - one claims win, other claims loss
+      ELSE
+        -- Determine winner and loser
+        IF v_host_claimed_won = 1 AND v_foe_claimed_won = 0 THEN
+          v_winner_id := v_dapaint.host_id;
+        ELSIF v_foe_claimed_won = 1 AND v_host_claimed_won = 0 THEN
+          v_winner_id := v_dapaint.foe_id;
+        END IF;
+        
+        -- Update winstreaks
+        UPDATE users SET current_winstreak = current_winstreak + 1 WHERE id = v_winner_id;
+        UPDATE users SET current_winstreak = 0 WHERE id != v_winner_id AND id IN (v_dapaint.host_id, v_dapaint.foe_id);
+        
+        -- Mark as completed
+        UPDATE dapaints 
+        SET status = 'completed', submitted_winner_id = v_winner_id
+        WHERE id = p_dapaint_id;
+        
+        RETURN json_build_object('success', true, 'message', 'Match resolved successfully.');
+      END IF;
+    ELSE
+      -- Not both submitted yet, just record the submission
+      RETURN json_build_object('success', true, 'message', 'Result submitted. Waiting for opponent response.');
+    END IF;
+  
+  -- Handle team DaPaints (same logic as 1v1 but for teams)
+  ELSIF v_dapaint.dapaint_type = 'team' THEN
+    -- Update participant record
+    UPDATE dapaint_participants
+    SET 
+      result_submitted = true,
+      submitted_winner_id = CASE WHEN p_claimed_won THEN p_user_id ELSE NULL END,
+      proof_url = p_proof_url,
+      submitted_at = NOW()
+    WHERE dapaint_id = p_dapaint_id AND user_id = p_user_id;
+    
+    -- For team DaPaints, we need to check if we have submissions from both teams
+    -- and apply the same logic as 1v1 DaPaints
+    
+    -- Check if we have submissions from both teams
+    SELECT COUNT(*) INTO v_host_submission
+    FROM dapaint_participants
+    WHERE dapaint_id = p_dapaint_id AND team = 'host' AND result_submitted = true;
+    
+    SELECT COUNT(*) INTO v_foe_submission
+    FROM dapaint_participants
+    WHERE dapaint_id = p_dapaint_id AND team = 'foe' AND result_submitted = true;
+    
+    -- If both teams have submissions, resolve like 1v1
+    IF v_host_submission > 0 AND v_foe_submission > 0 THEN
+      -- Get the claims from both teams
+      SELECT COUNT(*) INTO v_host_claimed_won
+      FROM dapaint_participants
+      WHERE dapaint_id = p_dapaint_id AND team = 'host' AND result_submitted = true AND submitted_winner_id IS NOT NULL;
+      
+      SELECT COUNT(*) INTO v_foe_claimed_won
+      FROM dapaint_participants
+      WHERE dapaint_id = p_dapaint_id AND team = 'foe' AND result_submitted = true AND submitted_winner_id IS NOT NULL;
+      
+      -- Both teams claim they won - create dispute
+      IF v_host_claimed_won > 0 AND v_foe_claimed_won > 0 THEN
+        v_conflict_type := 'both_won';
+        INSERT INTO dapaint_disputes (dapaint_id, dispute_type, status)
+        VALUES (p_dapaint_id, v_conflict_type, 'pending');
+        
+        RETURN json_build_object('success', true, 'message', 'Both teams claimed victory. Dispute created for review.');
+      
+      -- Both teams claim they lost - reset all winstreaks
+      ELSIF v_host_claimed_won = 0 AND v_foe_claimed_won = 0 THEN
+        -- Reset winstreaks for all participants
+        UPDATE users 
+        SET current_winstreak = GREATEST(0, current_winstreak - 1)
+        WHERE id IN (
+          SELECT user_id FROM dapaint_participants WHERE dapaint_id = p_dapaint_id
+        );
+        
+        -- Mark as draw
+        UPDATE dapaints 
+        SET status = 'completed', submitted_winner_id = NULL, submitted_loser_id = NULL
+        WHERE id = p_dapaint_id;
+        
+        RETURN json_build_object('success', true, 'message', 'Both teams claimed loss. All winstreaks adjusted and match marked as draw.');
+      
+      -- Normal resolution - one team claims win, other claims loss
+      ELSE
+        -- Determine winning team
+        IF v_host_claimed_won > 0 AND v_foe_claimed_won = 0 THEN
+          -- Host team wins - update winstreaks for host team (winners)
+          UPDATE users 
+          SET current_winstreak = current_winstreak + 1
+          WHERE id IN (
+            SELECT user_id FROM dapaint_participants WHERE dapaint_id = p_dapaint_id AND team = 'host'
+          );
+          -- Reset winstreaks for foe team (losers)
+          UPDATE users 
+          SET current_winstreak = 0
+          WHERE id IN (
+            SELECT user_id FROM dapaint_participants WHERE dapaint_id = p_dapaint_id AND team = 'foe'
+          );
+        ELSIF v_foe_claimed_won > 0 AND v_host_claimed_won = 0 THEN
+          -- Foe team wins - update winstreaks for foe team (winners)
+          UPDATE users 
+          SET current_winstreak = current_winstreak + 1
+          WHERE id IN (
+            SELECT user_id FROM dapaint_participants WHERE dapaint_id = p_dapaint_id AND team = 'foe'
+          );
+          -- Reset winstreaks for host team (losers)
+          UPDATE users 
+          SET current_winstreak = 0
+          WHERE id IN (
+            SELECT user_id FROM dapaint_participants WHERE dapaint_id = p_dapaint_id AND team = 'host'
+          );
+        END IF;
+        
+        -- Mark as completed
+        UPDATE dapaints 
+        SET status = 'completed'
+        WHERE id = p_dapaint_id;
+        
+        RETURN json_build_object('success', true, 'message', 'Team match resolved successfully.');
+      END IF;
+    ELSE
+      -- Not both teams submitted yet, just record the submission
+      RETURN json_build_object('success', true, 'message', 'Team result submitted. Waiting for other team response.');
+    END IF;
+  END IF;
+  
+  RETURN json_build_object('success', true, 'message', 'Result processed successfully');
+EXCEPTION
+  WHEN OTHERS THEN
+    RETURN json_build_object('success', false, 'message', 'Error processing result: ' || SQLERRM);
+END;
+$$;
+
 -- Cron job function to be called periodically
 CREATE OR REPLACE FUNCTION run_periodic_cleanup()
 RETURNS VOID

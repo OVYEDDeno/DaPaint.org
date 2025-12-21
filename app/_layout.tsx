@@ -89,8 +89,11 @@ export default function RootLayout() {
       <View style={styles.root}>
         <BackgroundLayer />
         <Stack screenOptions={{ headerShown: false }}>
-          <Stack.Screen name="(auth)" />
-          <Stack.Screen name="(tabs)" />
+          {isLoggedIn ? (
+            <Stack.Screen name="(tabs)" />
+          ) : (
+            <Stack.Screen name="(auth)" />
+          )}
         </Stack>
       </View>
     </>
