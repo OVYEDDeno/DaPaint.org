@@ -10,7 +10,8 @@
     "export": "expo export --platform web",
     "export:web": "npm run export && node scripts/post-export.js",
     "build": "npm run export:web",
-    "vercel-build": "expo export --platform web && node scripts/post-export.js"
+    "vercel-build": "expo export --platform web && node scripts/post-export.js",
+    "favicon": "node scripts/create-favicon.js"
   },
   "dependencies": {
     "@react-native-async-storage/async-storage": "^2.2.0",
@@ -42,7 +43,9 @@
     "react-native-screens": "~4.16.0",
     "react-native-url-polyfill": "^3.0.0",
     "react-native-view-shot": "^4.0.3",
-    "react-refresh": "^0.18.0"
+    "react-refresh": "^0.18.0",
+    "sharp": "^0.34.5",
+    "to-ico": "^1.1.5"
   },
   "devDependencies": {
     "@babel/core": "^7.25.0",

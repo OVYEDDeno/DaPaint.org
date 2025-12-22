@@ -322,52 +322,98 @@ BEGIN
   
   -- Handle 1v1 DaPaints
   IF v_dapaint.dapaint_type = '1v1' THEN
-    -- Update the DaPaint with the submission
+    -- DEBUG: Log initial state
+    -- RAISE NOTICE 'Initial state: submitted_winner_id=%, submitted_loser_id=%', v_dapaint.submitted_winner_id, v_dapaint.submitted_loser_id;
+    
+    -- First, check if this user has already submitted
     IF p_user_id = v_dapaint.host_id THEN
-      -- Host submission
+      -- Check if host has already submitted
+      IF v_dapaint.submitted_winner_id IS NOT NULL OR v_dapaint.submitted_loser_id IS NOT NULL THEN
+        -- Check if this is the same user resubmitting
+        IF (v_dapaint.submitted_winner_id = v_dapaint.host_id) OR (v_dapaint.submitted_loser_id = v_dapaint.host_id) THEN
+          RETURN json_build_object('success', false, 'message', 'Host has already submitted result');
+        END IF;
+      END IF;
+      
+      -- Host submission - update the DaPaint with the submission
       UPDATE dapaints
       SET 
-        submitted_winner_id = CASE WHEN p_claimed_won THEN v_dapaint.host_id ELSE NULL END,
-        submitted_loser_id = CASE WHEN NOT p_claimed_won THEN v_dapaint.host_id ELSE NULL END
+        submitted_winner_id = CASE WHEN p_claimed_won THEN v_dapaint.host_id ELSE submitted_winner_id END,
+        submitted_loser_id = CASE WHEN NOT p_claimed_won THEN v_dapaint.host_id ELSE submitted_loser_id END
       WHERE id = p_dapaint_id;
     ELSIF p_user_id = v_dapaint.foe_id THEN
-      -- Foe submission
+      -- Check if foe has already submitted
+      IF v_dapaint.submitted_winner_id IS NOT NULL OR v_dapaint.submitted_loser_id IS NOT NULL THEN
+        -- Check if this is the same user resubmitting
+        IF (v_dapaint.submitted_winner_id = v_dapaint.foe_id) OR (v_dapaint.submitted_loser_id = v_dapaint.foe_id) THEN
+          RETURN json_build_object('success', false, 'message', 'Foe has already submitted result');
+        END IF;
+      END IF;
+      
+      -- Foe submission - update the DaPaint with the submission
       UPDATE dapaints
       SET 
-        submitted_winner_id = CASE WHEN p_claimed_won THEN v_dapaint.foe_id ELSE NULL END,
-        submitted_loser_id = CASE WHEN NOT p_claimed_won THEN v_dapaint.foe_id ELSE NULL END
+        submitted_winner_id = CASE WHEN p_claimed_won THEN v_dapaint.foe_id ELSE submitted_winner_id END,
+        submitted_loser_id = CASE WHEN NOT p_claimed_won THEN v_dapaint.foe_id ELSE submitted_loser_id END
       WHERE id = p_dapaint_id;
     ELSE
       RETURN json_build_object('success', false, 'message', 'User is not a participant in this DaPaint');
     END IF;
     
-    -- Check if both participants have submitted
-    SELECT 
-      CASE WHEN submitted_winner_id IS NOT NULL OR submitted_loser_id IS NOT NULL THEN 1 ELSE 0 END
-    INTO v_host_submission
+    -- Refresh the DaPaint record to get updated values
+    SELECT * INTO v_dapaint
     FROM dapaints
-    WHERE id = p_dapaint_id AND (host_id = v_dapaint.host_id OR foe_id = v_dapaint.host_id);
+    WHERE id = p_dapaint_id;
     
-    SELECT 
-      CASE WHEN submitted_winner_id IS NOT NULL OR submitted_loser_id IS NOT NULL THEN 1 ELSE 0 END
-    INTO v_foe_submission
-    FROM dapaints
-    WHERE id = p_dapaint_id AND (host_id = v_dapaint.foe_id OR foe_id = v_dapaint.foe_id);
+    -- DEBUG: Output the current state for debugging
+    -- RAISE NOTICE 'DEBUG: host_id=%, foe_id=%, submitted_winner_id=%, submitted_loser_id=%', 
+    --   v_dapaint.host_id, v_dapaint.foe_id, v_dapaint.submitted_winner_id, v_dapaint.submitted_loser_id;
+    
+    -- Check if both participants have submitted
+    -- A participant has submitted if either submitted_winner_id or submitted_loser_id equals their ID
+    -- We need to be very careful here to distinguish between host and foe submissions
+    
+    -- Check if host has submitted
+    IF (v_dapaint.submitted_winner_id IS NOT NULL AND v_dapaint.submitted_winner_id = v_dapaint.host_id) OR
+       (v_dapaint.submitted_loser_id IS NOT NULL AND v_dapaint.submitted_loser_id = v_dapaint.host_id) THEN
+      v_host_submission := 1;
+    ELSE
+      v_host_submission := 0;
+    END IF;
+    
+    -- Check if foe has submitted
+    IF (v_dapaint.submitted_winner_id IS NOT NULL AND v_dapaint.submitted_winner_id = v_dapaint.foe_id) OR
+       (v_dapaint.submitted_loser_id IS NOT NULL AND v_dapaint.submitted_loser_id = v_dapaint.foe_id) THEN
+      v_foe_submission := 1;
+    ELSE
+      v_foe_submission := 0;
+    END IF;
+    
+    -- DEBUG: Output the submission status for debugging
+    -- RAISE NOTICE 'DEBUG: host_submission=%, foe_submission=%', v_host_submission, v_foe_submission;
+    
+    -- DEBUG: Log the submission status for debugging
+    -- RAISE NOTICE 'Host submission: %, Foe submission: %', v_host_submission, v_foe_submission;
     
     -- If both have submitted, resolve the outcome
     IF v_host_submission = 1 AND v_foe_submission = 1 THEN
       -- Get the actual claims
-      SELECT 
-        CASE WHEN submitted_winner_id = host_id THEN 1 ELSE 0 END
-      INTO v_host_claimed_won
-      FROM dapaints
-      WHERE id = p_dapaint_id;
+      -- Host claimed won if submitted_winner_id equals host_id
+      IF v_dapaint.submitted_winner_id IS NOT NULL AND v_dapaint.submitted_winner_id = v_dapaint.host_id THEN
+        v_host_claimed_won := 1;
+      ELSE
+        v_host_claimed_won := 0;
+      END IF;
       
-      SELECT 
-        CASE WHEN submitted_winner_id = foe_id THEN 1 ELSE 0 END
-      INTO v_foe_claimed_won
-      FROM dapaints
-      WHERE id = p_dapaint_id;
+      -- Foe claimed won if submitted_winner_id equals foe_id
+      IF v_dapaint.submitted_winner_id IS NOT NULL AND v_dapaint.submitted_winner_id = v_dapaint.foe_id THEN
+        v_foe_claimed_won := 1;
+      ELSE
+        v_foe_claimed_won := 0;
+      END IF;
+      
+      -- DEBUG: Log the claims for debugging
+      -- RAISE NOTICE 'Host claimed won: %, Foe claimed won: %', v_host_claimed_won, v_foe_claimed_won;
       
       -- Both claimed they won - create dispute
       IF v_host_claimed_won = 1 AND v_foe_claimed_won = 1 THEN
@@ -378,7 +424,6 @@ BEGIN
         RETURN json_build_object('success', true, 'message', 'Both players claimed victory. Dispute created for review.');
       
       -- Both claimed they lost - reset both winstreaks
-      ELSIF v_host_claimed_won = 0 AND v_foe_claimed_won = 0 THEN
         -- Reset both winstreaks
         UPDATE users SET current_winstreak = GREATEST(0, current_winstreak - 1) WHERE id = v_dapaint.host_id;
         UPDATE users SET current_winstreak = GREATEST(0, current_winstreak - 1) WHERE id = v_dapaint.foe_id;
@@ -408,14 +453,14 @@ BEGIN
           foe_display_name,
           dapaint,
           host_id,
-          submitted_winner_id as winner_id,
-          submitted_loser_id as loser_id,
-          (submitted_winner_id IS NULL AND submitted_loser_id IS NULL) as was_draw,
+          NULL as winner_id,
+          NULL as loser_id,
+          TRUE as was_draw,
           starts_at,
           NOW() as completed_at,
           required_winstreak,
           (SELECT current_winstreak FROM users WHERE id = host_id) as host_winstreak_at_completion,
-          (SELECT current_winstreak FROM users WHERE id = submitted_winner_id) as winner_winstreak_at_completion,
+          NULL as winner_winstreak_at_completion,
           CASE 
             WHEN dapaint_type = 'team' THEN 
               (SELECT jsonb_agg(jsonb_build_object('user_id', user_id, 'team', team, 'display_name', 
@@ -441,6 +486,9 @@ BEGIN
           v_winner_id := v_dapaint.host_id;
         ELSIF v_foe_claimed_won = 1 AND v_host_claimed_won = 0 THEN
           v_winner_id := v_dapaint.foe_id;
+        ELSE
+          -- This shouldn't happen with our logic, but just in case
+          RETURN json_build_object('success', false, 'message', 'Invalid resolution state');
         END IF;
         
         -- Update winstreaks
@@ -472,14 +520,14 @@ BEGIN
           foe_display_name,
           dapaint,
           host_id,
-          submitted_winner_id as winner_id,
-          submitted_loser_id as loser_id,
+          v_winner_id as winner_id,
+          CASE WHEN v_winner_id = v_dapaint.host_id THEN v_dapaint.foe_id ELSE v_dapaint.host_id END as loser_id,
           (submitted_winner_id IS NULL AND submitted_loser_id IS NULL) as was_draw,
           starts_at,
           NOW() as completed_at,
           required_winstreak,
           (SELECT current_winstreak FROM users WHERE id = host_id) as host_winstreak_at_completion,
-          (SELECT current_winstreak FROM users WHERE id = submitted_winner_id) as winner_winstreak_at_completion,
+          (SELECT current_winstreak FROM users WHERE id = v_winner_id) as winner_winstreak_at_completion,
           CASE 
             WHEN dapaint_type = 'team' THEN 
               (SELECT jsonb_agg(jsonb_build_object('user_id', user_id, 'team', team, 'display_name', 

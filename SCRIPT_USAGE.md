@@ -53,3 +53,15 @@ node scripts/fix-data-integrity.js
 ```
 
 This script identifies and fixes data integrity violations in the DaPaint database.
+
+## Favicon Creation Script
+
+The favicon creation script converts the logo.png file to a favicon.ico file with multiple resolutions.
+
+### Running the Favicon Script
+
+```bash
+node scripts/create-favicon.js
+```
+
+This will create a favicon.ico file in the root directory using the logo.png file from the assets folder. The favicon will include multiple resolutions (16x16, 32x32, and 48x48) for optimal display across different devices and browsers.
