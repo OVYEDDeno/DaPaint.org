@@ -153,8 +153,8 @@ async function fixHostViolations(violations) {
             .from('dapaints')
             .update({ 
               status: 'completed',
-              submitted_winner_id: null,
-              submitted_loser_id: null
+              host_claimed_winner_id: null,
+              foe_claimed_winner_id: null
             })
             .eq('id', dapaint.id);
           
@@ -244,8 +244,8 @@ async function fixFoeViolations(violations) {
           .from('dapaints')
           .update({ 
             status: 'completed',
-            submitted_winner_id: null,
-            submitted_loser_id: null
+            host_claimed_winner_id: null,
+            foe_claimed_winner_id: null
           })
           .eq('id', dapaint.id);
         

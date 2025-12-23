@@ -55,8 +55,8 @@ export async function createDaPaint(
       max_participants: params.max_participants,
       required_winstreak: userData.current_winstreak,
       status: "scheduled",
-      submitted_winner_id: null,
-      submitted_loser_id: null,
+      host_claimed_winner_id: null,
+      foe_claimed_winner_id: null,
     });
 
     if (error) throw error;
@@ -90,8 +90,8 @@ export type DaPaint = {
   max_participants: number;
   required_winstreak: number;
   status: "scheduled" | "pending_balance" | "live" | "in_progress" | "completed";
-  submitted_winner_id: string | null;
-  submitted_loser_id: string | null;
+  host_claimed_winner_id: string | null;
+  foe_claimed_winner_id: string | null;
   created_at: string;
 };
 
@@ -314,8 +314,8 @@ export async function leaveDaPaint(
           .from("dapaints")
           .update({
             status: "completed",
-            submitted_winner_id: winnerId,
-            submitted_loser_id: loserId,
+            host_claimed_winner_id: winnerId,
+            foe_claimed_winner_id: loserId,
           })
           .eq("id", dapaintId);
 
@@ -370,8 +370,8 @@ export async function leaveDaPaint(
         .from("dapaints")
         .update({
           status: "completed",
-          submitted_winner_id: winnerId,
-          submitted_loser_id: loserId,
+          host_claimed_winner_id: winnerId,
+          foe_claimed_winner_id: loserId,
         })
         .eq("id", dapaintId);
 
@@ -462,7 +462,7 @@ async function checkAndHandleExpiredDaPaints(): Promise<void> {
       
       if (dapaint.dapaint_type === "1v1") {
         // Check if either participant has submitted
-        hasSubmissions = !!dapaint.submitted_winner_id || !!dapaint.submitted_loser_id;
+        hasSubmissions = !!dapaint.host_claimed_winner_id || !!dapaint.foe_claimed_winner_id;
       } else {
         // Check if any team member has submitted
         const { data: participants } = await supabase
@@ -472,7 +472,7 @@ async function checkAndHandleExpiredDaPaints(): Promise<void> {
           .eq("result_submitted", true)
           .limit(1);
         
-        hasSubmissions = participants && participants.length > 0;
+        hasSubmissions = participants ? participants.length > 0 : false;
       }
       
       // If no submissions, mark as draw and decrease both participants' winstreaks by 1
@@ -482,8 +482,8 @@ async function checkAndHandleExpiredDaPaints(): Promise<void> {
           .from("dapaints")
           .update({
             status: "completed",
-            submitted_winner_id: null,
-            submitted_loser_id: null,
+            host_claimed_winner_id: null,
+            foe_claimed_winner_id: null,
             updated_at: new Date().toISOString()
           })
           .eq("id", dapaint.id);

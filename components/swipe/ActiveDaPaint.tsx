@@ -114,11 +114,11 @@ export default function ActiveDaPaint({
         .eq("id", dapaint.host_id)
         .single();
 
-      if (dapaint.submitted_winner_id || dapaint.submitted_loser_id) {
+      if (dapaint.host_claimed_winner_id || dapaint.foe_claimed_winner_id) {
         subs.push({
           user_id: dapaint.host_id,
           display_name: hostData?.display_name || "Host",
-          claimed_won: dapaint.submitted_winner_id === dapaint.host_id,
+          claimed_won: dapaint.host_claimed_winner_id === dapaint.host_id,
           proof_url: null,
           submitted_at: new Date().toISOString(),
         });
@@ -131,11 +131,11 @@ export default function ActiveDaPaint({
           .eq("id", dapaint.foe_id)
           .single();
 
-        if (dapaint.submitted_winner_id || dapaint.submitted_loser_id) {
+        if (dapaint.host_claimed_winner_id || dapaint.foe_claimed_winner_id) {
           subs.push({
             user_id: dapaint.foe_id,
             display_name: foeData?.display_name || "Foe",
-            claimed_won: dapaint.submitted_winner_id === dapaint.foe_id,
+            claimed_won: dapaint.foe_claimed_winner_id === dapaint.foe_id,
             proof_url: null,
             submitted_at: new Date().toISOString(),
           });
@@ -173,7 +173,7 @@ export default function ActiveDaPaint({
       return {
         user_id: p.user_id,
         display_name: dn,
-        claimed_won: p.submitted_winner_id === p.user_id,
+        claimed_won: p.submitted_winner_id === p.user_id, // Note: For team participants, this might still use the old schema
         proof_url: p.proof_url,
         submitted_at: p.submitted_at,
       };

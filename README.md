@@ -37,3 +37,10 @@ If you encounter a 404 error:
 
 - Run `npm start` for development
 - Run `npm run web` to preview the web version locally
+
+## Testing
+
+- Run `npm run test:backend` to run backend functionality tests
+- Run `npm run test:feed` to run feed functionality tests
+- Run `npm run test:dapaint` to run DaPaint functionality tests
+- See DA_PAINT_FUNCTIONS.md for all DaPaint functions and how to test them
