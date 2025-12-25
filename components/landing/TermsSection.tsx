@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, StyleSheet } from 'react-native';
+import { View, StyleSheet } from 'react-native';
 
 interface TermsSectionProps {
   animation?: any;
@@ -8,7 +8,6 @@ interface TermsSectionProps {
 }
 
 export const TermsSection: React.FC<TermsSectionProps> = ({
-  animation,
   enterStyle,
   exitStyle
 }) => {

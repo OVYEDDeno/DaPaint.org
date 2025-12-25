@@ -21,6 +21,8 @@ import { theme } from "../../constants/theme";
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
 const SWIPE_THRESHOLD = SCREEN_WIDTH * 0.38;
 
+
+
 type SwipeFeedProps = {
   dapaints: DaPaint[];
   onSwipeLeft: (dapaint: DaPaint) => void;
@@ -37,8 +39,20 @@ function SwipeFeedComponent({ dapaints, onSwipeLeft, onSwipeRight, onExhausted, 
   const position = useRef(new Animated.ValueXY({ x: 0, y: 0 })).current;
   const scale = useRef(new Animated.Value(1)).current;
 
-  const currentCard = dapaints[currentIndex];
-  const nextCard = dapaints[currentIndex + 1];
+  const currentCard = useMemo(() => dapaints[currentIndex], [dapaints, currentIndex]);
+  const nextCard = useMemo(() => dapaints[currentIndex + 1], [dapaints, currentIndex]);
+
+  const resetCard = useCallback(() => {
+    position.setValue({ x: 0, y: 0 });
+    scale.setValue(1);
+  }, [position, scale]);
+
+  useEffect(() => {
+    setCurrentIndex(0);
+    setSkippedCards([]);
+    setShowInfoModal(false);
+    resetCard();
+  }, [dapaints, resetCard]);
 
   const rotateInterpolate = useMemo(
     () =>
@@ -69,11 +83,6 @@ function SwipeFeedComponent({ dapaints, onSwipeLeft, onSwipeRight, onExhausted, 
       }),
     [position.x]
   );
-
-  const resetCard = useCallback(() => {
-    position.setValue({ x: 0, y: 0 });
-    scale.setValue(1);
-  }, [position, scale]);
 
   const animateCardExit = useCallback(
     (direction: "left" | "right") => {
@@ -112,6 +121,8 @@ function SwipeFeedComponent({ dapaints, onSwipeLeft, onSwipeRight, onExhausted, 
     if (skippedCards.length === 0) return;
 
     const lastSkipped = skippedCards[skippedCards.length - 1];
+    if (!lastSkipped) return;
+    
     const lastIndex = dapaints.findIndex((d) => d.id === lastSkipped.id);
     if (lastIndex === -1) return;
 

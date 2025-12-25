@@ -1,15 +1,16 @@
 // app/(auth)/signup.tsx - Multi-step Signup Process
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { Alert, Keyboard, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Alert, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { supabase } from '../../lib/supabase';
+import { signUp } from '../../lib/api/auth';
 import logger from '../../lib/logger';
 import { userDataManager } from '../../lib/UserDataManager';
-import { DaPaintColors, DaPaintDatePickerTheme } from '../../constants/DaPaintDesign';
+import { DaPaintDatePickerTheme } from '../../constants/DaPaintDesign';
 import { theme } from '../../constants/theme';
-import { getKeyboardDismissHandler, stopEventOnWeb } from '../../lib/webFocusGuard';
+import { getKeyboardDismissHandler } from '../../lib/webFocusGuard';
 import BackgroundLayer from '../../components/ui/BackgroundLayer';
+import { supabase } from '../../lib/supabase';
 
 // Conditional import for DateTimePicker - only import on native platforms
 let DateTimePicker: any = null;
@@ -87,7 +88,7 @@ export default function SignupScreen() {
     return age;
   };
 
-  const onDateChange = (event: any, selectedDate?: Date) => {
+  const onDateChange = (_event: { type?: string }, selectedDate?: Date) => {
     setShowDatePicker(Platform.OS === 'ios');
 
     if (selectedDate) {
@@ -185,37 +186,35 @@ export default function SignupScreen() {
         return;
       }
 
-      // First, sign up the user with Supabase Auth
-      const { data: authData, error: authError } = await supabase.auth.signUp({
-        email: formData.email,
-        password: formData.password,
-      });
-
-      if (authError) {
-        logger.error('Auth error:', authError);
-        Alert.alert('Sign Up Failed', 'We could not create your account. Please check your email and password and try again.');
-        return;
-      }
-
-      if (!authData.user) {
-        Alert.alert('Sign Up Failed', 'We could not create your account. Please try again.');
-        return;
-      }
-
-      // Create user profile with CORRECT column names
+      // Create normalized username first
       const normalizedUsername = usernameInput?.toLowerCase() || '';
-      const { error: profileError } = await supabase.from('users').insert({
-        id: authData.user.id,
-        username: normalizedUsername,
-        display_name: normalizedUsername || 'user',
-        email: formData.email,
-        phone: formData.phone || null,
-        city: formData.city || null,
-        zipcode: formData.postalCode, // This is now required, no null fallback
-        birthday: formData.birthday.toISOString().split('T')[0],
-        how_did_you_hear: formData.howDidYouHear || null,
-        current_winstreak: 0,
-      });
+      
+      // First, sign up the user with centralized auth function
+      const authResult = await signUp(formData.email, formData.password, normalizedUsername);
+
+      if (!authResult.success || !authResult.userId) {
+        logger.error('Auth error:', authResult.error);
+        Alert.alert('Sign Up Failed', authResult.error?.message || 'We could not create your account. Please check your email and password and try again.');
+        return;
+      }
+
+      const userId = authResult.userId;
+
+      // Create or update user profile to avoid duplicate insert conflicts
+      const { error: profileError } = await supabase
+        .from('users')
+        .upsert({
+          id: userId,
+          username: normalizedUsername,
+          display_name: normalizedUsername || 'user',
+          email: formData.email,
+          phone: formData.phone || null,
+          city: formData.city || null,
+          zipcode: formData.postalCode, // This is now required, no null fallback
+          birthday: formData.birthday.toISOString().split('T')[0],
+          how_did_you_hear: formData.howDidYouHear || null,
+          current_winstreak: 0,
+        }, { onConflict: 'id' });
 
       if (profileError) {
         logger.error('Profile creation error:', profileError);
@@ -241,6 +240,22 @@ export default function SignupScreen() {
       }
 
       logger.debug('Profile created successfully');
+
+      const { error: notificationError } = await supabase
+        .from('notification_settings')
+        .insert({
+          user_id: userId,
+          new_follower: true,
+          dapaint_invite: true,
+          dapaint_joined: true,
+          dapaint_starting: true,
+          dapaint_result: true,
+          messages: true,
+        });
+
+      if (notificationError) {
+        logger.warn('Failed to create notification settings:', notificationError);
+      }
 
       // Preload user data
       await userDataManager.preloadUserData();
@@ -356,7 +371,7 @@ export default function SignupScreen() {
 
             {/* Phone */}
             <View style={styles.inputGroup}>
-              <Text style={styles.label}>Phone Number</Text>
+              <Text style={styles.label}>Phone Number *</Text>
                 <TextInput
                   style={styles.input}
                   value={formData.phone}
@@ -393,10 +408,15 @@ export default function SignupScreen() {
                     onChangeText={(text) => {
                       // Parse MM/DD/YYYY format
                       const parts = text.split('/');
-                      if (parts.length === 3) {
-                        const date = new Date(parts[2], parts[0] - 1, parts[1]);
-                        if (!isNaN(date.getTime())) {
-                          updateField('birthday', date);
+                      if (parts.length === 3 && parts[0] && parts[1] && parts[2]) {
+                        const year = parseInt(parts[2]);
+                        const month = parseInt(parts[0]) - 1;
+                        const day = parseInt(parts[1]);
+                        if (!isNaN(year) && !isNaN(month) && !isNaN(day)) {
+                          const date = new Date(year, month, day);
+                          if (!isNaN(date.getTime())) {
+                            updateField('birthday', date);
+                          }
                         }
                       }
                     }}

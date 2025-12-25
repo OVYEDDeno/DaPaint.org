@@ -4,7 +4,7 @@ import logger from '../logger';
 
 export type AuthError = {
   message: string;
-  code?: string;
+  code?: string | undefined;
   details?: string;
 };
 
@@ -37,7 +37,7 @@ export async function signUp(
         success: false,
         error: {
           message: authError.message,
-          code: authError.status?.toString(),
+          code: authError.status?.toString() || undefined,
           details: 'Failed to create authentication account'
         }
       };
@@ -143,7 +143,7 @@ export async function signIn(
         success: false,
         error: {
           message: userMessage,
-          code: error.status?.toString(),
+          code: error.status?.toString() || undefined,
           details: error.message
         }
       };

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Keyboard, Modal, Animated, StyleSheet } from 'react-native';
+import { View, Keyboard, Modal, StyleSheet } from 'react-native';
 import BackgroundLayer from '../ui/BackgroundLayer';
 import { LogoSection } from './LogoSection';
 import { HeroTextSection } from './HeroTextSection';

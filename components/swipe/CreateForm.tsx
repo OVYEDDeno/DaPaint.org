@@ -9,8 +9,6 @@ import {
   Alert,
   Platform,
   ScrollView,
-  Dimensions,
-  Keyboard,
   KeyboardAvoidingView,
 } from "react-native";
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -18,7 +16,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { createDaPaint } from "../../lib/api/dapaints";
 import { DaPaintDatePickerTheme } from "../../constants/DaPaintDesign";
 import { theme } from "../../constants/theme";
-import { getKeyboardDismissHandler, stopEventOnWeb } from "../../lib/webFocusGuard";
+import { getKeyboardDismissHandler } from "../../lib/webFocusGuard";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
 // Conditional import for DateTimePicker - only import on native platforms
@@ -31,7 +29,7 @@ if (Platform.OS !== 'web') {
   }
 }
 
-const { width: SCREEN_WIDTH } = Dimensions.get('window');
+// Removed unused SCREEN_WIDTH const
 
 type UserData = {
   id: string;
@@ -150,14 +148,14 @@ export default function CreateForm({ userData, onCreated }: CreateFormProps) {
     saveDraft();
   }, [step, formData]);
 
-  const onDateChange = (event: any, selectedDate?: Date) => {
+  const onDateChange = (_event: any, selectedDate?: Date) => {
     setShowDatePicker(Platform.OS === 'ios');
     if (selectedDate) {
       updateField('date', selectedDate);
     }
   };
 
-  const onTimeChange = (event: any, selectedTime?: Date) => {
+  const onTimeChange = (_event: any, selectedTime?: Date) => {
     setShowTimePicker(Platform.OS === 'ios');
     if (selectedTime) {
       updateField('time', selectedTime);
@@ -213,6 +211,8 @@ export default function CreateForm({ userData, onCreated }: CreateFormProps) {
     try {
       const startsAt = toDate(formData.date);
       const timeVal = toDate(formData.time);
+      const parsedPrice = Number.parseFloat(formData.ticketPrice);
+      const ticketPrice = Number.isFinite(parsedPrice) ? Math.max(0, parsedPrice) : 0;
       startsAt.setHours(timeVal.getHours());
       startsAt.setMinutes(timeVal.getMinutes());
       startsAt.setSeconds(0);
@@ -227,7 +227,7 @@ export default function CreateForm({ userData, onCreated }: CreateFormProps) {
         city: formData.city,
         zipcode: formData.postalCode,
         starts_at: startsAt.toISOString(),
-        ticket_price: parseFloat(formData.ticketPrice),
+        ticket_price: ticketPrice,
         max_participants: formData.maxParticipants,
         dapaint_type: formData.dapaintType,
       });
@@ -476,13 +476,15 @@ export default function CreateForm({ userData, onCreated }: CreateFormProps) {
                   onChangeText={(text) => {
                     const parts = text.split('/');
                     if (parts.length === 3) {
-                      const date = new Date(
-                        parseInt(parts[2]),
-                        parseInt(parts[0]) - 1,
-                        parseInt(parts[1])
-                      );
-                      if (!isNaN(date.getTime())) {
-                        updateField('date', date);
+                      const year = parseInt(parts[2] || '0');
+                      const month = parseInt(parts[0] || '0') - 1;
+                      const day = parseInt(parts[1] || '0');
+                      
+                      if (!isNaN(year) && !isNaN(month) && !isNaN(day)) {
+                        const date = new Date(year, month, day);
+                        if (!isNaN(date.getTime())) {
+                          updateField('date', date);
+                        }
                       }
                     }
                   }}
@@ -529,7 +531,7 @@ export default function CreateForm({ userData, onCreated }: CreateFormProps) {
                   onChangeText={(text) => {
                     const date = new Date();
                     const timeParts = text.match(/(\d+):(\d+)\s*(AM|PM)/i);
-                    if (timeParts) {
+                    if (timeParts && timeParts[1] && timeParts[2] && timeParts[3]) {
                       let hours = parseInt(timeParts[1]);
                       const minutes = parseInt(timeParts[2]);
                       const period = timeParts[3].toUpperCase();

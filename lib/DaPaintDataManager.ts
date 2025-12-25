@@ -17,16 +17,20 @@ class DaPaintDataManager {
   private activeDaPaint: DaPaint | null = null;
   private lastFeedFetchTime: number = 0;
   private lastActiveFetchTime: number = 0;
-  private cacheExpiry: number = 2 * 60 * 1000; // 2 minutes cache
+  // Increase cache expiry from 2 minutes to 5 minutes to reduce API calls
+  private cacheExpiry: number = 5 * 60 * 1000; // 5 minutes cache
   private feedLoadingPromise: Promise<DaPaint[]> | null = null;
   private activeLoadingPromise: Promise<DaPaint | null> | null = null;
   private feedStorageKey: string = 'feedDataCache';
   private activeStorageKey: string = 'activeDaPaintCache';
+  private storageLoadPromise: Promise<void> | null = null;
 
   constructor() {
     // Try to load from AsyncStorage on initialization
-    this.loadFeedFromStorage();
-    this.loadActiveFromStorage();
+    this.storageLoadPromise = Promise.all([
+      this.loadFeedFromStorage(),
+      this.loadActiveFromStorage(),
+    ]).then(() => undefined);
   }
 
   /**
@@ -38,6 +42,9 @@ class DaPaintDataManager {
     userCity?: string,
     limit: number = 10
   ): Promise<DaPaint[]> {
+    if (this.storageLoadPromise) {
+      await this.storageLoadPromise;
+    }
     const now = Date.now();
     
     // Return cached data if still valid
@@ -181,6 +188,9 @@ class DaPaintDataManager {
    * Get user's active DaPaint with caching
    */
   async getActiveDaPaint(): Promise<DaPaint | null> {
+    if (this.storageLoadPromise) {
+      await this.storageLoadPromise;
+    }
     const now = Date.now();
     
     // Return cached data if still valid
@@ -277,7 +287,7 @@ class DaPaintDataManager {
         logger.warn(`Data Integrity Violation: User ${user.id} is participating in ${participations.length} team DaPaints. This violates the exclusivity constraint.`);
       }
       
-      if (participations.length === 0) return null;
+      if (participations.length === 0 || !participations[0]) return null;
 
       const { data: teamDaPaints, error: teamError } = await supabase
         .from('dapaints')
@@ -403,21 +413,20 @@ class DaPaintDataManager {
   /**
    * Load feed data from AsyncStorage
    */
-  private loadFeedFromStorage(): void {
+  private async loadFeedFromStorage(): Promise<void> {
     try {
-      AsyncStorage.getItem(this.feedStorageKey).then(cached => {
-        if (cached) {
-          const cacheData = JSON.parse(cached);
-          const now = Date.now();
-          
-          // Check if cache is still valid
-          if ((now - cacheData.timestamp) < this.cacheExpiry) {
-            this.feedData = cacheData.data;
-            this.lastFeedFetchTime = cacheData.timestamp;
-            logger.debug('Loaded feed data from storage cache');
-          }
+      const cached = await AsyncStorage.getItem(this.feedStorageKey);
+      if (cached) {
+        const cacheData = JSON.parse(cached);
+        const now = Date.now();
+        
+        // Check if cache is still valid
+        if ((now - cacheData.timestamp) < this.cacheExpiry) {
+          this.feedData = cacheData.data;
+          this.lastFeedFetchTime = cacheData.timestamp;
+          logger.debug('Loaded feed data from storage cache');
         }
-      });
+      }
     } catch (error) {
       logger.debug('Could not load feed data from storage:', error);
     }
@@ -426,21 +435,20 @@ class DaPaintDataManager {
   /**
    * Load active DaPaint from AsyncStorage
    */
-  private loadActiveFromStorage(): void {
+  private async loadActiveFromStorage(): Promise<void> {
     try {
-      AsyncStorage.getItem(this.activeStorageKey).then(cached => {
-        if (cached) {
-          const cacheData = JSON.parse(cached);
-          const now = Date.now();
-          
-          // Check if cache is still valid
-          if ((now - cacheData.timestamp) < this.cacheExpiry) {
-            this.activeDaPaint = cacheData.data;
-            this.lastActiveFetchTime = cacheData.timestamp;
-            logger.debug('Loaded active DaPaint from storage cache');
-          }
+      const cached = await AsyncStorage.getItem(this.activeStorageKey);
+      if (cached) {
+        const cacheData = JSON.parse(cached);
+        const now = Date.now();
+        
+        // Check if cache is still valid
+        if ((now - cacheData.timestamp) < this.cacheExpiry) {
+          this.activeDaPaint = cacheData.data;
+          this.lastActiveFetchTime = cacheData.timestamp;
+          logger.debug('Loaded active DaPaint from storage cache');
         }
-      });
+      }
     } catch (error) {
       logger.debug('Could not load active DaPaint from storage:', error);
     }

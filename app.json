@@ -14,7 +14,15 @@
       "backgroundColor": "#000000"
     },
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "infoPlist": {
+        "NSAppTransportSecurity": {
+          "NSAllowsArbitraryLoads": true
+        },
+        "UIBackgroundModes": [
+          "audio"
+        ]
+      }
     },
     "android": {
       "adaptiveIcon": {
@@ -28,7 +36,15 @@
       "favicon": "./assets/logo.png"
     },
     "plugins": [
-      "expo-router/app.plugin.js"
+      "expo-router/app.plugin.js",
+      [
+        "expo-video",
+        {
+          "supportsBackgroundPlayback": true,
+          "supportsPictureInPicture": true
+        }
+      ],
+      "expo-secure-store"
     ]
   }
 }

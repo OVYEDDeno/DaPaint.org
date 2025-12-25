@@ -10,7 +10,6 @@ interface HeroImageSectionProps {
 }
 
 export const HeroImageSection: React.FC<HeroImageSectionProps> = ({ 
-  animation,
   enterStyle,
   exitStyle
 }) => {

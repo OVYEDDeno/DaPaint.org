@@ -8,6 +8,7 @@ type EmptyFeedProps = {
   userZipcode: string;
   onCreateDaPaint: () => void;
   onFeelingLucky: () => void;
+  isExploreEmpty?: boolean;
 };
 
 export default function EmptyFeed({
@@ -15,6 +16,7 @@ export default function EmptyFeed({
   userZipcode,
   onCreateDaPaint,
   onFeelingLucky,
+  isExploreEmpty,
 }: EmptyFeedProps) {
   const bounce = useRef(new Animated.Value(0)).current;
 
@@ -36,38 +38,68 @@ export default function EmptyFeed({
           <Text style={styles.emoji}>🎯</Text>
         </View>
 
-        <Text style={styles.title}>Nothing in your feed yet</Text>
-        <Text style={styles.subtitle}>
-          Winstreak {userWinstreak} • Zip {userZipcode}
-        </Text>
+        {/* Different content based on isExploreEmpty */}
+        {isExploreEmpty ? (
+          <>
+            <Text style={styles.title}>No DaPaints found!</Text>
+            <Text style={styles.subtitle}>
+              Winstreak {userWinstreak} • Zip {userZipcode}
+            </Text>
 
-        <View style={styles.infoCard}>
-          <Text style={styles.infoIcon}>💡</Text>
-          <Text style={styles.infoText}>
-            Post a DaPaint and be the one everyone sees first.
-          </Text>
-        </View>
+            <View style={styles.infoCard}>
+              <Text style={styles.infoIcon}>💡</Text>
+              <Text style={styles.infoText}>
+                No DaPaints available in other areas. Try again later or create your own!
+              </Text>
+            </View>
+          </>
+        ) : (
+          <>
+            <Text style={styles.title}>Nothing in your feed yet</Text>
+            <Text style={styles.subtitle}>
+              Winstreak {userWinstreak} • Zip {userZipcode}
+            </Text>
 
-        <Pressable
-          style={({ pressed }) => [styles.primaryBtn, pressed && styles.pressed]}
-          onPress={onCreateDaPaint}
-        >
-          <Text style={styles.primaryText}>Create a DaPaint</Text>
-        </Pressable>
+            <View style={styles.infoCard}>
+              <Text style={styles.infoIcon}>💡</Text>
+              <Text style={styles.infoText}>
+                Post a DaPaint and be the one everyone sees first.
+              </Text>
+            </View>
+          </>
+        )}
 
-        <View style={styles.divider}>
-          <View style={styles.dividerLine} />
-          <Text style={styles.dividerText}>or</Text>
-          <View style={styles.dividerLine} />
-        </View>
+        {isExploreEmpty ? (
+          <Pressable
+            style={({ pressed }) => [styles.primaryBtn, pressed && styles.pressed]}
+            onPress={onCreateDaPaint}
+          >
+            <Text style={styles.primaryText}>Create a DaPaint</Text>
+          </Pressable>
+        ) : (
+          <>
+            <Pressable
+              style={({ pressed }) => [styles.primaryBtn, pressed && styles.pressed]}
+              onPress={onCreateDaPaint}
+            >
+              <Text style={styles.primaryText}>Create a DaPaint</Text>
+            </Pressable>
 
-        <Pressable
-          style={({ pressed }) => [styles.secondaryBtn, pressed && styles.secondaryPressed]}
-          onPress={onFeelingLucky}
-        >
-          <Text style={styles.secondaryText}>I’m feeling lucky 🎲</Text>
-        </Pressable>
-        <Text style={styles.hint}>(Browse same winstreak elsewhere)</Text>
+            <View style={styles.divider}>
+              <View style={styles.dividerLine} />
+              <Text style={styles.dividerText}>or</Text>
+              <View style={styles.dividerLine} />
+            </View>
+
+            <Pressable
+              style={({ pressed }) => [styles.secondaryBtn, pressed && styles.secondaryPressed]}
+              onPress={onFeelingLucky}
+            >
+              <Text style={styles.secondaryText}>I’m feeling lucky 🎲</Text>
+            </Pressable>
+            <Text style={styles.hint}>(Browse same winstreak elsewhere)</Text>
+          </>
+        )}
       </Animated.View>
     </View>
   );
@@ -81,6 +113,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     paddingHorizontal: theme.space.lg,
     paddingVertical: 0,
+    top: -40,
   },
   content: {
     width: "100%",
@@ -99,7 +132,7 @@ const styles = StyleSheet.create({
     marginBottom: theme.space.lg,
     ...theme.shadow.glowPrimary,
   },
-  emoji: { fontSize: 64 },
+  emoji: { fontSize: 68 },
 
   title: {
     ...theme.type.displayLarge,

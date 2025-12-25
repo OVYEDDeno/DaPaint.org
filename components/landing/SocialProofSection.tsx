@@ -8,7 +8,6 @@ interface SocialProofSectionProps {
 }
 
 export const SocialProofSection: React.FC<SocialProofSectionProps> = ({ 
-  animation,
   enterStyle,
   exitStyle
 }) => {

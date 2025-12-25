@@ -8,11 +8,11 @@ import {
   Platform,
   Alert,
   StyleSheet,
-  Keyboard,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 import { supabase } from "../../lib/supabase";
+import { getSession, signOut, signIn } from "../../lib/api/auth";
 import { userDataManager } from "../../lib/UserDataManager";
 import logger from "../../lib/logger";
 import { theme } from "../../constants/theme";
@@ -38,52 +38,41 @@ export default function AuthSection({ keyboardOffset }: AuthSectionProps) {
   useEffect(() => {
     const checkExistingSession = async () => {
       try {
-        const {
-          data: { session },
-          error: sessionError,
-        } = await supabase.auth.getSession();
-
-        if (sessionError) {
-          logger.error("Error getting session:", sessionError);
-          await supabase.auth.signOut();
-          await userDataManager.clearCache();
-          setSessionChecked(true);
-          return;
-        }
-
+        const session = await getSession();
+  
         if (session) {
           logger.debug("User already logged in, checking profile...");
-
+  
           try {
             const { data: userProfile, error: profileError } = await supabase
               .from("users")
               .select("id")
               .eq("id", session.user.id)
               .single();
-
+  
             if (profileError || !userProfile) {
               logger.debug("Authenticated user missing profile, signing out...");
-              await supabase.auth.signOut();
+              await signOut();
               await userDataManager.clearCache();
               Alert.alert("Session Error", "Please log in again to continue.");
               setSessionChecked(true);
               return;
             }
-
+  
             logger.debug("User profile found, redirecting to feed");
             await userDataManager.preloadUserData();
             router.replace("/(tabs)/feed");
             return;
           } catch (profileError) {
             logger.error("Error checking user profile:", profileError);
-            await supabase.auth.signOut();
+            await signOut();
             await userDataManager.clearCache();
           }
         }
       } catch (error) {
         logger.error("Unexpected error checking existing session:", error);
         try {
-          await supabase.auth.signOut();
+          await signOut();
           await userDataManager.clearCache();
         } catch (signOutError) {
           logger.error("Error during sign out:", signOutError);
@@ -92,7 +81,7 @@ export default function AuthSection({ keyboardOffset }: AuthSectionProps) {
         setSessionChecked(true);
       }
     };
-
+  
     checkExistingSession();
   }, [router]);
 
@@ -167,14 +156,11 @@ export default function AuthSection({ keyboardOffset }: AuthSectionProps) {
         return;
       }
 
-      const { error: signInError } = await supabase.auth.signInWithPassword({
-        email: userData.email,
-        password: password,
-      });
+      const signInResult = await signIn(userData.email, password);
 
-      if (signInError) {
-        logger.error("Sign in error:", signInError);
-        Alert.alert("Login Failed", "Invalid credentials. Please try again.");
+      if (!signInResult.success) {
+        logger.error("Sign in error:", signInResult.error);
+        Alert.alert("Login Failed", signInResult.error?.message || "Invalid credentials. Please try again.");
         return;
       }
 
@@ -230,7 +216,7 @@ export default function AuthSection({ keyboardOffset }: AuthSectionProps) {
                       textContentType="username"
                       returnKeyType={showPasswordInput ? "next" : "done"}
                       onSubmitEditing={() => (showPasswordInput ? undefined : handleCheckUsername())}
-                      autoFocus={true}
+                      autoFocus={!showPasswordInput}
                       onPressIn={stopEventOnWeb}
                     />
                   </View>
@@ -261,7 +247,7 @@ export default function AuthSection({ keyboardOffset }: AuthSectionProps) {
                       textContentType="password"
                       returnKeyType="go"
                       onSubmitEditing={handleLogin}
-                      autoFocus={true}
+                      autoFocus={showPasswordInput}
                       onPressIn={stopEventOnWeb}
                     />
                   </View>

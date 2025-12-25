@@ -15,7 +15,6 @@ import { BlurView } from "expo-blur";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useRef } from "react";
 import { theme } from "../../constants/theme";
-import BackgroundLayer from "../ui/BackgroundLayer";
 import { getKeyboardDismissHandler, stopEventOnWeb } from "../../lib/webFocusGuard";
 
 type ChatModalProps = {

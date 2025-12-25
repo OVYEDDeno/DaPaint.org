@@ -1,13 +1,15 @@
-import { useEffect, useState, useCallback, useRef } from "react";
-import { View, Text, StyleSheet, Pressable, Alert, Platform, Image, LayoutChangeEvent } from "react-native";
+import { useEffect, useState, useCallback } from "react";
+import { View, Text, StyleSheet, Alert, Platform, Image, LayoutChangeEvent, Pressable } from "react-native";
 import { useRouter } from "expo-router";
 import { supabase } from "../../lib/supabase";
+import { getSession } from "../../lib/api/auth";
 import {
   DaPaint,
   getAvailableDaPaints,
   getExploreDaPaints,
+  getLuckyDaPaints,
   joinDaPaint,
-  getActiveDaPaint,
+
   canUserJoinDaPaint,
 } from "../../lib/api/dapaints";
 import { attachUserImagesToDaPaints } from "../../lib/api/attachUserImages";
@@ -21,6 +23,33 @@ import BackgroundLayer from "../../components/ui/BackgroundLayer";
 import { userDataManager } from "../../lib/UserDataManager";
 
 const WINSTREAK_GOAL = 30;
+// Increase cache TTL from 60s to 5 minutes to reduce API calls
+const FEED_CACHE_TTL_MS = 5 * 60 * 1000;
+const feedCache: {
+  userId: string | null;
+  feed: DaPaint[];
+  explore: DaPaint[];
+  updatedAt: number;
+} = {
+  userId: null,
+  feed: [],
+  explore: [],
+  updatedAt: 0,
+};
+
+const getCachedFeed = (userId: string) => {
+  if (feedCache.userId !== userId) return null;
+  if (Date.now() - feedCache.updatedAt > FEED_CACHE_TTL_MS) return null;
+  return feedCache;
+};
+
+const updateFeedCache = (userId: string, feed: DaPaint[], explore: DaPaint[]) => {
+  feedCache.userId = userId;
+  // Use shallow copy to prevent accidental mutations
+  feedCache.feed = [...feed];
+  feedCache.explore = [...explore];
+  feedCache.updatedAt = Date.now();
+};
 
 export default function FeedScreen() {
   const router = useRouter();
@@ -36,18 +65,47 @@ export default function FeedScreen() {
   const [showAd, setShowAd] = useState(false);
   const [joining, setJoining] = useState(false);
 
+  useEffect(() => {
+    // Hide tab bar when ad is showing for full-screen experience
+    const globalAny: any = global;
+    if (typeof globalAny !== "undefined" && globalAny.setTabBarVisibility) {
+      globalAny.setTabBarVisibility(!showAd);
+    }
+    return () => {
+      if (typeof globalAny !== "undefined" && globalAny.setTabBarVisibility) {
+        globalAny.setTabBarVisibility(true);
+      }
+    };
+  }, [showAd]);
+
   const loadFeed = useCallback(async () => {
     try {
       const userId = userData?.id;
       if (!userId) return;
 
+      logger.debug("Feed Query Debug Info:");
+      logger.debug("User ID:", userId);
+      logger.debug("User Winstreak:", userData?.current_winstreak);
+      logger.debug("User Zipcode:", userData?.zipcode);
+      logger.debug("User City:", userData?.city);
+
       const feedListRaw = await getAvailableDaPaints(userId);
+      logger.debug("Feed results count:", feedListRaw.length);
+      
       const feedList = await attachUserImagesToDaPaints(feedListRaw);
       setDaPaints(feedList);
 
       const exploreListRaw = await getExploreDaPaints(userId);
+      logger.debug("Explore results count:", exploreListRaw.length);
+      
       const exploreList = await attachUserImagesToDaPaints(exploreListRaw);
       setExploreDaPaints(exploreList);
+      updateFeedCache(userId, feedList, exploreList);
+      
+      logger.debug("✅ Results found:", feedList.length);
+      if (feedList.length === 0) {
+        logger.debug("⚠️ No DaPaints found with these filters");
+      }
     } catch (error) {
       logger.error("Error loading feed:", error);
       Alert.alert("Error", "Failed to load your feed. Please try again.");
@@ -56,24 +114,55 @@ export default function FeedScreen() {
     }
   }, [userData]);
 
+
+
+  const loadLuckyDaPaints = useCallback(async () => {
+    try {
+      const userId = userData?.id;
+      if (!userId) return;
+
+      const luckyListRaw = await getLuckyDaPaints(userId);
+      const luckyList = await attachUserImagesToDaPaints(luckyListRaw);
+      setExploreDaPaints(luckyList); // Use the same state as explore
+      const currentFeed = feedCache.userId === userId ? feedCache.feed : dapaints;
+      updateFeedCache(userId, currentFeed, luckyList);
+    } catch (error) {
+      logger.error("Error loading lucky feed:", error);
+      Alert.alert("Error", "Failed to load lucky feed. Please try again.");
+    }
+  }, [userData]);
+
   useEffect(() => {
     const loadUserData = async () => {
       try {
-        const { data: sessionData } = await supabase.auth.getSession();
-        if (!sessionData.session) {
+        const session = await getSession();
+        if (!session) {
           logger.debug("No session found, redirecting to login");
           await userDataManager.clearCache();
           router.replace("/");
           return;
         }
 
-        const data = await userDataManager.getUserData(true);
-        if (!data) {
+        const cachedData = await userDataManager.getUserData();
+        if (cachedData) {
+          setUserData(cachedData);
+        }
+
+        const freshData = await userDataManager.getUserData(true);
+        if (!freshData) {
           logger.debug("No user data found, redirecting to login");
           router.replace("/");
           return;
         }
-        setUserData(data);
+        setUserData(freshData);
+        if (
+          !cachedData ||
+          cachedData.current_winstreak !== freshData.current_winstreak ||
+          cachedData.zipcode !== freshData.zipcode ||
+          cachedData.city !== freshData.city
+        ) {
+          setHasLoaded(false);
+        }
       } catch (error) {
         logger.error("Error loading user data:", error);
         router.replace("/");
@@ -83,9 +172,19 @@ export default function FeedScreen() {
     loadUserData();
   }, [router]);
 
+  const [hasLoaded, setHasLoaded] = useState(false);
+  
   useEffect(() => {
-    if (userData) loadFeed();
-  }, [userData, loadFeed]);
+    if (userData && !hasLoaded) {
+      const cached = getCachedFeed(userData.id);
+      if (cached) {
+        setDaPaints(cached.feed);
+        setExploreDaPaints(cached.explore);
+      }
+      loadFeed();
+      setHasLoaded(true);
+    }
+  }, [userData, loadFeed, hasLoaded]);
 
   // Real-time subscription for user profile changes (including winstreak updates)
   useEffect(() => {
@@ -108,6 +207,11 @@ export default function FeedScreen() {
           
           // Also update the cached user data in userDataManager
           userDataManager.updateCachedUserData(updatedUser);
+          
+          // Only reload feed if winstreak changed significantly (to avoid continuous reloads)
+          if (userData.current_winstreak !== updatedUser.current_winstreak) {
+            setHasLoaded(false); // Allow feed to reload on next render
+          }
         }
       )
       .subscribe();
@@ -115,11 +219,24 @@ export default function FeedScreen() {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [userData?.id]);
+  }, [userData?.id, userData?.current_winstreak]);
 
-  const handleCreateDaPaint = () => router.push("/(tabs)/active");
-  const handleFeelingLucky = () => setActiveTab("explore");
-  const handleGoToActive = () => router.push("/(tabs)/active");
+
+
+  const handleCreateDaPaint = () => {
+    // Navigate to the active tab with a flag to show ad
+    router.push("/(tabs)/active?fromCreate=true");
+  };
+  
+  const handleFeelingLucky = () => {
+    setActiveTab("explore");
+    // Load DaPaints from different zipcodes regardless of winstreak when feeling lucky
+    if (userData?.id) {
+      loadLuckyDaPaints();
+    }
+  };
+  
+  const handleGoToActive = () => router.push("/(tabs)/active?fromMatch=true");
   const handleHeaderLayout = useCallback((e: LayoutChangeEvent) => {
     setHeaderHeight(e.nativeEvent.layout.height);
   }, []);
@@ -132,14 +249,14 @@ export default function FeedScreen() {
     logger.debug(`Swiped right on ${dapaint.dapaint}`);
     if (joining) return;
 
-    const { data: sessionData } = await supabase.auth.getSession();
-    if (!sessionData.session || !userData?.id) {
+    const session = await getSession();
+    if (!session || !userData?.id) {
       router.replace("/");
       return;
     }
 
     // Guard: Check if user can join with detailed 48-hour logic
-    const joinCheck = await canUserJoinDaPaint(userData.id, dapaint);
+    const joinCheck = await canUserJoinDaPaint(userData.id);
     if (!joinCheck.canJoin) {
       Alert.alert(
         "Action Required",
@@ -153,35 +270,11 @@ export default function FeedScreen() {
     setShowAd(true);
   };
 
-  const handleEditOwn = () => router.push("/(tabs)/active");
 
-  const handleDeleteOwn = () => {
-    Alert.alert(
-      "Delete DaPaint?",
-      "Are you sure you want to delete your DaPaint? This cannot be undone.",
-      [
-        { text: "Cancel", style: "cancel" },
-        {
-          text: "Delete",
-          style: "destructive",
-          onPress: async () => {
-            logger.debug("User confirmed deletion of own DaPaint");
-            // TODO: implement delete
-          },
-        },
-      ]
-    );
-  };
 
-  const handleLogout = async () => {
-    const { error } = await supabase.auth.signOut();
-    if (error) {
-      logger.error("Error signing out:", error);
-      Alert.alert("Error", "Failed to sign out. Please try again.");
-    } else {
-      router.replace("/");
-    }
-  };
+
+
+
 
   const handleAdComplete = useCallback(() => {
     setShowAd(false);
@@ -229,10 +322,12 @@ export default function FeedScreen() {
 
   const handleMatchContinue = useCallback(() => {
     setMatchedDaPaint(null);
+    setHasLoaded(false);
     loadFeed();
   }, [loadFeed]);
 
   const currentDaPaints = activeTab === "feed" ? dapaints : exploreDaPaints;
+  const isExploreEmpty = activeTab === "explore" && exploreDaPaints.length === 0;
   const winstreakValue = userData?.current_winstreak ?? 0;
   const winstreakProgress = Math.min(1, winstreakValue / WINSTREAK_GOAL);
   const winsLeft = Math.max(0, WINSTREAK_GOAL - winstreakValue);
@@ -244,6 +339,8 @@ export default function FeedScreen() {
       />
     );
   }
+
+
 
   if (matchedDaPaint) {
     return (
@@ -281,6 +378,25 @@ export default function FeedScreen() {
           {winsLeft} left until you're a millionaire.
         </Text>
 
+        <View style={styles.tabs}>
+          <Pressable
+            style={[styles.tab, activeTab === "feed" && styles.tabActive]}
+            onPress={() => setActiveTab("feed")}
+          >
+            <Text style={[styles.tabText, activeTab === "feed" && styles.tabTextActive]}>
+              Feed
+            </Text>
+          </Pressable>
+          <Pressable
+            style={[styles.tab, activeTab === "explore" && styles.tabActive]}
+            onPress={() => setActiveTab("explore")}
+          >
+            <Text style={[styles.tabText, activeTab === "explore" && styles.tabTextActive]}>
+              Explore
+            </Text>
+          </Pressable>
+        </View>
+
       </View>
 
       {/* Content */}
@@ -290,6 +406,7 @@ export default function FeedScreen() {
           userZipcode={userData?.zipcode || ""}
           onCreateDaPaint={handleCreateDaPaint}
           onFeelingLucky={handleFeelingLucky}
+          isExploreEmpty={isExploreEmpty}
         />
       ) : (
         <SwipeFeed
@@ -301,7 +418,8 @@ export default function FeedScreen() {
             if (activeTab === "feed") {
               setDaPaints([]);
             } else {
-              setExploreDaPaints([]);
+              // For explore tab, try to reload data instead of clearing
+              loadLuckyDaPaints();
             }
           }}
         />

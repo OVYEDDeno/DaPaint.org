@@ -15,7 +15,7 @@ import {
 import { useEffect, useState } from 'react';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { theme } from '../../constants/theme';
-import { getKeyboardDismissHandler, stopEventOnWeb } from '../../lib/webFocusGuard';
+import { getKeyboardDismissHandler } from '../../lib/webFocusGuard';
 // Conditional import for DateTimePicker - only import on native platforms
 let DateTimePicker: any = null;
 if (Platform.OS !== 'web') {
@@ -102,14 +102,14 @@ export default function EditDaPaintModal({
     };
   }, []);
 
-  const onDateChange = (event: any, selectedDate?: Date) => {
+  const onDateChange = (_event: any, selectedDate?: Date) => {
     setShowDatePicker(Platform.OS === 'ios');
     if (selectedDate) {
       updateField('date', selectedDate);
     }
   };
 
-  const onTimeChange = (event: any, selectedTime?: Date) => {
+  const onTimeChange = (_event: any, selectedTime?: Date) => {
     setShowTimePicker(Platform.OS === 'ios');
     if (selectedTime) {
       updateField('time', selectedTime);
@@ -299,9 +299,15 @@ export default function EditDaPaintModal({
                       // Parse MM/DD/YYYY format
                       const parts = text.split('/');
                       if (parts.length === 3) {
-                        const date = new Date(parts[2], parts[0] - 1, parts[1]);
-                        if (!isNaN(date.getTime())) {
-                          updateField('date', date);
+                        const year = parseInt(parts[2] || '0');
+                        const month = parseInt(parts[0] || '0') - 1;
+                        const day = parseInt(parts[1] || '0');
+                        
+                        if (!isNaN(year) && !isNaN(month) && !isNaN(day)) {
+                          const date = new Date(year, month, day);
+                          if (!isNaN(date.getTime())) {
+                            updateField('date', date);
+                          }
                         }
                       }
                     }}
@@ -346,7 +352,7 @@ export default function EditDaPaintModal({
                       // Parse HH:MM AM/PM format (simplified)
                       const date = new Date();
                       const timeParts = text.match(/(\d+):(\d+)\s*(AM|PM)/i);
-                      if (timeParts) {
+                      if (timeParts && timeParts[1] && timeParts[2] && timeParts[3]) {
                         let hours = parseInt(timeParts[1]);
                         const minutes = parseInt(timeParts[2]);
                         const period = timeParts[3].toUpperCase();

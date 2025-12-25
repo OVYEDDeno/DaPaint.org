@@ -4,10 +4,9 @@ import { View, Text, StyleSheet, Pressable, Alert, Platform } from "react-native
 import type { DaPaint } from "../../lib/api/dapaints";
 import { theme } from "../../constants/theme";
 import * as Sharing from 'expo-sharing';
-import * as MediaLibrary from 'expo-media-library';
 
 // Conditional import for view shot to avoid web issues
-let captureRef;
+let captureRef: any;
 try {
   if (Platform.OS !== 'web') {
     captureRef = require('react-native-view-shot').captureRef;
@@ -23,7 +22,7 @@ type MatchScreenProps = {
   onGoToActive: () => void;
 };
 
-export default function MatchScreen({ dapaint, onContinue, onGoToActive }: MatchScreenProps) {
+export default function MatchScreen({ dapaint, onGoToActive }: MatchScreenProps) {
   const viewRef = useRef(null);
   
   const when = useMemo(() => {

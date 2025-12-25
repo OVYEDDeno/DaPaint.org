@@ -1,5 +1,6 @@
 // lib/logger.ts
 // Centralized logging utility with environment-based filtering
+import * as Sentry from '@sentry/react-native';
 
 const isDevelopment = process.env.NODE_ENV === 'development';
 
@@ -24,7 +25,6 @@ function log(level: LogLevel, message: string, ...optionalParams: any[]) {
   // Only log if the current level allows it
   if (level >= CURRENT_LOG_LEVEL) {
     const timestamp = new Date().toISOString();
-    const levelString = LogLevel[level];
     
     switch (level) {
       case LogLevel.DEBUG:
@@ -38,6 +38,15 @@ function log(level: LogLevel, message: string, ...optionalParams: any[]) {
         break;
       case LogLevel.ERROR:
         console.error(`[ERROR][${timestamp}] ${message}`, ...optionalParams);
+        
+        // Capture error in Sentry for production monitoring
+        if (!isDevelopment) {
+          Sentry.captureMessage(`[ERROR] ${message}`, 'error');
+          if (optionalParams.length > 0) {
+            // Add extra data to Sentry if available
+            Sentry.setExtra('extra_data', optionalParams);
+          }
+        }
         break;
     }
   }
@@ -62,6 +71,11 @@ export function info(message: string, ...optionalParams: any[]) {
  */
 export function warn(message: string, ...optionalParams: any[]) {
   log(LogLevel.WARN, message, ...optionalParams);
+  
+  // Capture warnings in Sentry if needed
+  if (!isDevelopment) {
+    Sentry.captureMessage(`[WARN] ${message}`, 'warning');
+  }
 }
 
 /**
@@ -77,8 +91,24 @@ export function error(message: string, ...optionalParams: any[]) {
 export function logError(context: string, error: any) {
   if (error instanceof Error) {
     log(LogLevel.ERROR, `${context}: ${error.message}`, error.stack);
+    
+    // Capture the error object in Sentry
+    if (!isDevelopment) {
+      Sentry.captureException(error, {
+        contexts: {
+          custom: {
+            context: context,
+          },
+        },
+      });
+    }
   } else {
     log(LogLevel.ERROR, `${context}: ${String(error)}`);
+    
+    // Capture non-error objects as messages
+    if (!isDevelopment) {
+      Sentry.captureMessage(`${context}: ${String(error)}`, 'error');
+    }
   }
 }
 

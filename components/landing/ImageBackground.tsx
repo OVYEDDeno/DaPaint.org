@@ -17,13 +17,4 @@ export const ImageBackground = () => {
   );
 };
 
-const styles = StyleSheet.create({
-  overlay: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: "rgba(7,10,18,0.72)",
-  },
-  vignette: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: "rgba(0,0,0,0.25)",
-  },
-});
+

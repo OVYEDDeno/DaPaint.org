@@ -10,7 +10,6 @@ interface HeroTextSectionProps {
 }
 
 export const HeroTextSection: React.FC<HeroTextSectionProps> = ({
-  animation,
   enterStyle,
   exitStyle,
   onShowFAQ,

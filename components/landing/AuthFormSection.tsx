@@ -15,7 +15,6 @@ interface AuthFormSectionProps {
  * Wrapper component for authentication form in landing page
  */
 export const AuthFormSection: React.FC<AuthFormSectionProps> = ({
-  animation,
   enterStyle,
   exitStyle,
   keyboardHeight = 0,

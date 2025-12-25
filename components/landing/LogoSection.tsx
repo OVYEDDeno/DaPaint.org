@@ -5,10 +5,10 @@ interface LogoSectionProps {
   animation?: any;
   enterStyle?: any;
   exitStyle?: any;
+  style?: any;
 }
 
 export const LogoSection: React.FC<LogoSectionProps> = ({
-  animation,
   enterStyle,
   exitStyle,
   ...props

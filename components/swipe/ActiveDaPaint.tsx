@@ -20,7 +20,7 @@ import {
 import EditDaPaintModal from "./EditDaPaintModal";
 import ChatModal from "./ChatModal";
 import logger from "../../lib/logger";
-import { BlurView } from "expo-blur";
+
 import { theme } from "../../constants/theme";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
@@ -52,6 +52,7 @@ export default function ActiveDaPaint({
   userId,
   onLeave,
 }: ActiveDaPaintProps) {
+  const [now, setNow] = useState(() => new Date());
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [loading, setLoading] = useState(false);
   const [teamInfo, setTeamInfo] = useState<any>(null);
@@ -73,10 +74,16 @@ export default function ActiveDaPaint({
     () => new Date(dapaint.starts_at),
     [dapaint.starts_at]
   );
-  const now = new Date();
   const hasStarted = now >= startsAt;
   const hoursUntilStart =
     (startsAt.getTime() - now.getTime()) / (1000 * 60 * 60);
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setNow(new Date());
+    }, 30000);
+    return () => clearInterval(timer);
+  }, []);
 
   const leaveButtonInfo = useMemo(() => {
     const isWithin48Hours = hoursUntilStart <= 48;
@@ -534,8 +541,7 @@ export default function ActiveDaPaint({
                     // Calculate time remaining for submissions (24 hours after start)
                     const startTime = new Date(dapaint.starts_at).getTime();
                     const submissionDeadline = startTime + (24 * 60 * 60 * 1000); // 24 hours in milliseconds
-                    const now = Date.now();
-                    const timeLeftMs = submissionDeadline - now;
+                    const timeLeftMs = submissionDeadline - now.getTime();
                     
                     if (timeLeftMs <= 0) {
                       return "Submission deadline passed";
@@ -947,7 +953,6 @@ const styles = StyleSheet.create({
   pillText: { ...theme.type.labelMedium, color: "#ffffff" },
   pillTextAlt: { ...theme.type.labelMedium, color: theme.colors.textPrimary },
 });
-
 
 
 

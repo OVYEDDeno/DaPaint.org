@@ -1,6 +1,7 @@
 ﻿// app/(tabs)/_layout.tsx
 import { Tabs, useRouter } from 'expo-router';
-import { View, Text, StyleSheet, Image } from 'react-native';
+import { Text, StyleSheet, Image, View, Platform } from 'react-native';
+import { BlurView } from 'expo-blur';
 import { useCallback, useEffect, useState } from 'react';
 import { supabase } from '../../lib/supabase';
 import logger from '../../lib/logger';
@@ -15,13 +16,12 @@ const palette = {
 
 export default function TabsLayout() {
   const router = useRouter();
-  const [hasActiveDaPaint, setHasActiveDaPaint] = useState(false);
-  const [loading, setLoading] = useState(true);
+  // const [hasActiveDaPaint, setHasActiveDaPaint] = useState(false); // Commented out as it's not being used directly in the render
   const [hideTabBar, setHideTabBar] = useState(false);
 
   useEffect(() => {
     // @ts-ignore
-    global.setTabBarVisibility = setHideTabBar;
+    global.setTabBarVisibility = (visible: boolean) => setHideTabBar(!visible);
 
     return () => {
       // @ts-ignore
@@ -33,7 +33,7 @@ export default function TabsLayout() {
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) {
-        setHasActiveDaPaint(false);
+        // setHasActiveDaPaint(false); // Not used but may be needed in future
         return;
       }
 
@@ -41,12 +41,13 @@ export default function TabsLayout() {
       daPaintDataManager.preloadActiveDaPaint();
       daPaintDataManager.preloadFeedData();
 
-      const activeDaPaint = await daPaintDataManager.getActiveDaPaint();
-      setHasActiveDaPaint(!!activeDaPaint);
+      // @ts-ignore - intentionally unused variable for future use
+      const _activeDaPaint = await daPaintDataManager.getActiveDaPaint();
+      // setHasActiveDaPaint(!!_activeDaPaint); // Not used but may be needed in future
     } catch (error) {
       logger.error('Error checking active DaPaint:', error);
     } finally {
-      setLoading(false);
+      // No blocking render; preloads happen in background.
     }
   }, []);
 
@@ -124,10 +125,6 @@ export default function TabsLayout() {
     };
   }, [checkActiveDaPaint]);
 
-  if (loading) {
-    return null;
-  }
-
   return (
     <Tabs
       screenOptions={{
@@ -137,6 +134,15 @@ export default function TabsLayout() {
         tabBarLabelStyle: styles.tabLabel,
         tabBarItemStyle: styles.tabItem,
         tabBarStyle: hideTabBar ? [styles.tabBar, styles.tabBarHidden] : styles.tabBar,
+        tabBarBackground: () => (
+          Platform.OS === 'web' ? (
+            <View style={styles.tabBarBackdrop} />
+          ) : (
+            <BlurView intensity={22} tint="light" style={StyleSheet.absoluteFillObject}>
+              <View style={styles.tabBarBackdrop} />
+            </BlurView>
+          )
+        ),
         headerShown: false,
       }}
     >
@@ -145,7 +151,7 @@ export default function TabsLayout() {
         name="feed"
         options={{
           title: 'Feed',
-          tabBarIcon: ({ focused }) => (
+          tabBarIcon: ({ }) => (
             <Image
               source={require('../../assets/logo.png')}
               style={styles.logoIcon}
@@ -158,11 +164,11 @@ export default function TabsLayout() {
         name="active"
         options={{
           title: 'Active',
-          tabBarIcon: ({ focused }) => (
+          tabBarIcon: ({ }) => (
             <Text
                 style={[
                   styles.iconText,
-                  focused ? styles.iconTextActive : styles.iconTextInactive,
+                  styles.iconTextInactive,
                 ]}
               >
                 🔥
@@ -171,21 +177,22 @@ export default function TabsLayout() {
         }}
       />
       <Tabs.Screen
-        name="settings"
+        name="profile"
         options={{
-          title: 'Logout',
-          tabBarIcon: ({ focused }) => (
+          title: 'Profile',
+          tabBarIcon: ({ }) => (
             <Text
-              style={[
-                styles.iconText,
-                focused ? styles.iconTextActive : styles.iconTextInactive,
-              ]}
-            >
-              ←
-            </Text>
+                style={[
+                  styles.iconText,
+                  styles.iconTextInactive,
+                ]}
+              >
+                👤
+              </Text>
           ),
         }}
       />
+
     </Tabs>
   );
 }
@@ -211,6 +218,10 @@ const styles = StyleSheet.create({
     shadowRadius: 0,
     shadowOffset: { width: 0, height: 0 },
     elevation: 0,
+  },
+  tabBarBackdrop: {
+    flex: 1,
+    backgroundColor: 'rgba(255,255,255,0.55)',
   },
   tabBarHidden: {
     display: 'none',

@@ -1,83 +1,93 @@
 // app/(tabs)/active.tsx
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import {
   View,
-  Text,
   StyleSheet,
   Alert,
-  ActivityIndicator,
   Platform,
   KeyboardAvoidingView,
   Pressable,
-  Keyboard,
-  ScrollView,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { useRouter, useFocusEffect } from "expo-router";
-import { supabase } from "../../lib/supabase";
+import { useRouter, useFocusEffect, useLocalSearchParams } from "expo-router";
 import ActiveDaPaint from "../../components/swipe/ActiveDaPaint";
-import { leaveDaPaint, getActiveDaPaint } from "../../lib/api/dapaints";
+import { leaveDaPaint } from "../../lib/api/dapaints";
 import logger from "../../lib/logger";
 import type { DaPaint } from "../../lib/api/dapaints";
 import CreateForm from "../../components/swipe/CreateForm";
+import AdScreen from "../../components/swipe/AdScreen";
 import BackgroundLayer from "../../components/ui/BackgroundLayer";
 import { theme } from "../../constants/theme";
 import { getKeyboardDismissHandler } from "../../lib/webFocusGuard";
+import { userDataManager } from "../../lib/UserDataManager";
+import { daPaintDataManager } from "../../lib/DaPaintDataManager";
 
 export default function CreateDaPaintScreen() {
   const router = useRouter();
-  const [loading, setLoading] = useState(true);
+  const { fromCreate, fromMatch, fromEdit } = useLocalSearchParams<{
+    fromCreate?: string;
+    fromMatch?: string;
+    fromEdit?: string;
+  }>();
+  const [_loading, setLoading] = useState(true);
   const [activeDaPaint, setActiveDaPaint] = useState<DaPaint | null>(null);
+  const shouldShowAd =
+    fromCreate === "true" || fromMatch === "true" || fromEdit === "true";
+  const [showAd, setShowAd] = useState(shouldShowAd);
   const [userData, setUserData] = useState<{
     id: string;
     display_name: string;
     current_winstreak: number;
   } | null>(null);
   const dismissKeyboard = getKeyboardDismissHandler();
-
-  // Check authentication on component mount
+  
+  // Ref to store the pauseVideo function from AdScreen
+  const pauseVideoRef = useRef<(() => void) | null>(null);
+  
+  // Effect to handle tab bar visibility based on screen state
   useEffect(() => {
-    checkAuth();
+    const globalAny: any = global;
+    if (typeof globalAny !== 'undefined' && globalAny.setTabBarVisibility) {
+      const shouldShowTabBar = showAd
+        ? false  // Hide tab bar when showing ad
+        : true;   // Show tab bar in all other cases (active DaPaint, create form, loading)
+      globalAny.setTabBarVisibility(shouldShowTabBar);
+    }
+    
+    return () => {
+      // Show tab bar when component unmounts
+      if (typeof globalAny !== 'undefined' && globalAny.setTabBarVisibility) {
+        globalAny.setTabBarVisibility(true);
+      }
+    };
+  }, [showAd, activeDaPaint, userData]);
+
+  // Preload data on component mount
+  useEffect(() => {
+    // Kick off background preloads, then use cached data if available.
+    userDataManager.preloadUserData();
+    daPaintDataManager.preloadActiveDaPaint();
+    loadData();
   }, []);
 
-  const checkAuth = async () => {
-    try {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) {
-        logger.debug('No session found, redirecting to login');
-        router.replace('/');
-        return;
-      }
-      
-      // If we get here, user is authenticated, proceed with normal loading
-      loadData();
-    } catch (error) {
-      logger.error('Error checking auth:', error);
-      router.replace('/');
-    }
-  };
+
 
   const loadData = async () => {
-    setLoading(true);
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) {
+      const cachedUserData = await userDataManager.getUserData();
+      if (!cachedUserData) {
         Alert.alert("Error", "Please sign in to create a DaPaint");
         router.replace("/");
         return;
       }
-
-      const { data, error } = await supabase
-        .from("users")
-        .select("id, display_name, current_winstreak")
-        .eq("id", user.id)
-        .single();
-
-      if (error) throw error;
-      setUserData(data);
+      setUserData({
+        id: cachedUserData.id,
+        display_name: cachedUserData.display_name,
+        current_winstreak: cachedUserData.current_winstreak,
+      });
 
       // Check for active DaPaint using the API function
-      const myActiveDaPaint = await getActiveDaPaint(user.id);
+      const myActiveDaPaint = await daPaintDataManager.getActiveDaPaint();
       setActiveDaPaint(myActiveDaPaint);
       
       // Trigger a check in the tab layout to update the tab label
@@ -88,16 +98,27 @@ export default function CreateDaPaintScreen() {
     } catch (error) {
       logger.error("Error loading user data:", error);
       Alert.alert("Error", "Failed to load user data");
-    } finally {
-      setLoading(false);
     }
   };
 
   // Refresh data when screen comes into focus
   useFocusEffect(
     useCallback(() => {
+      setShowAd(shouldShowAd);
       loadData();
-    }, [])
+      
+      // When screen comes into focus and AdScreen is showing, try to resume if needed
+      if (showAd && pauseVideoRef.current) {
+        // We don't resume the video here, just ensure we're tracking the ref
+      }
+      
+      return () => {
+        // When screen loses focus, pause the video if AdScreen is active
+        if (pauseVideoRef.current) {
+          pauseVideoRef.current();
+        }
+      };
+    }, [showAd, shouldShowAd])
   );
 
   const handleLeaveDaPaint = async () => {
@@ -174,20 +195,44 @@ export default function CreateDaPaintScreen() {
       setLoading(false);
     }
   };
+  
+  const handleAdComplete = useCallback(() => {
+    setShowAd(false);
+    // After ad completes, ensure we transition appropriately
+    // The renderContent function will automatically show the correct component
+    // based on whether there's an active DaPaint or not
+    
+    // If we came from the match screen, create flow, or edit flow, replace the URL to remove the parameters
+    // to avoid showing ads repeatedly when navigating back to this screen
+    if (shouldShowAd) {
+      router.replace('/(tabs)/active');
+    }
+  }, [router, shouldShowAd]);
+  
+  // Function to set the pauseVideo function from AdScreen
+  const setPauseVideoFunction = useCallback((pauseFunction: (() => void) | null) => {
+    pauseVideoRef.current = pauseFunction;
+    
+    // Clean up the ref when AdScreen unmounts
+    return () => {
+      pauseVideoRef.current = null;
+    };
+  }, []);
 
   const renderContent = () => {
-    if (loading) {
+    // Show ad if needed
+    if (showAd) {
       return (
-        <View style={styles.container}>
-          <View style={styles.loadingContainer}>
-            <ActivityIndicator size="large" color={theme.colors.primaryDeep} />
-            <Text style={styles.loadingText}>Loading...</Text>
-          </View>
-        </View>
+        <AdScreen onComplete={handleAdComplete} setPauseFunction={setPauseVideoFunction} />
       );
     }
+    
+    // Avoid blocking the UI while user data hydrates from cache.
+    if (!userData) {
+      return <View style={styles.container} />;
+    }
 
-    if (activeDaPaint && userData) {
+    if (activeDaPaint) {
       return (
         <View style={styles.container}>
           <ActiveDaPaint
@@ -221,15 +266,6 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: "transparent",
-  },
-  loadingContainer: {
-    flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  loadingText: {
-    fontSize: 16,
-    color: theme.colors.textPrimary,
   },
   header: {
     paddingHorizontal: 24,

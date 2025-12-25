@@ -1,14 +1,16 @@
 // app/+not-found.tsx
 import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
-import { Link, useRouter } from 'expo-router';
+import { useRouter } from 'expo-router';
 import { theme } from '../constants/theme';
+import BackgroundLayer from '../components/ui/BackgroundLayer';
 
 export default function NotFoundScreen() {
   const router = useRouter();
 
   return (
     <View style={styles.container}>
+      <BackgroundLayer />
       <Text style={styles.title}>404</Text>
       <Text style={styles.subtitle}>Page Not Found</Text>
       <Text style={styles.description}>
@@ -40,7 +42,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     padding: theme.space.lg,
-    backgroundColor: theme.colors.bg0,
+    backgroundColor: 'transparent',
   },
   title: {
     fontSize: 64,

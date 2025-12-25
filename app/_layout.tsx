@@ -3,9 +3,30 @@ import { Stack } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { View, StyleSheet, Platform } from 'react-native';
 import { supabase } from '../lib/supabase';
+import { getSession, signOut } from '../lib/api/auth';
 import logger from '../lib/logger';
 import BackgroundLayer from '../components/ui/BackgroundLayer';
 import Head from 'expo-router/head';
+import * as Sentry from '@sentry/react-native';
+
+Sentry.init({
+  dsn: 'https://f0a7bbf487722943592ee9615fc87981@o4510594012807168.ingest.us.sentry.io/4510594012938240',
+
+  // Adds more context data to events (IP address, cookies, user, etc.)
+  // For more information, visit: https://docs.sentry.io/platforms/react-native/data-management/data-collected/
+  sendDefaultPii: true,
+
+  // Enable Logs
+  enableLogs: true,
+
+  // Configure Session Replay
+  replaysSessionSampleRate: 0.1,
+  replaysOnErrorSampleRate: 1,
+  integrations: [Sentry.mobileReplayIntegration(), Sentry.feedbackIntegration()],
+
+  // uncomment the line below to enable Spotlight (https://spotlightjs.com)
+  // spotlight: __DEV__,
+});
 
 export default function RootLayout() {
   const [sessionChecked, setSessionChecked] = useState(false);
@@ -23,21 +44,7 @@ export default function RootLayout() {
     // Check for existing session
     const checkSession = async () => {
       try {
-        const { data: { session }, error } = await supabase.auth.getSession();
-        
-        // Handle session retrieval errors
-        if (error) {
-          logger.error('Error getting session:', error);
-          // Clear any invalid session data
-          try {
-            await supabase.auth.signOut();
-          } catch (signOutError) {
-            logger.error('Error during sign out:', signOutError);
-          }
-          setIsLoggedIn(false);
-          setSessionChecked(true);
-          return;
-        }
+        const session = await getSession();
         
         setIsLoggedIn(!!session);
         logger.debug('Session check complete. Logged in:', !!session);
@@ -45,7 +52,7 @@ export default function RootLayout() {
         logger.error('Unexpected error checking session:', error);
         // Clear any invalid session data
         try {
-          await supabase.auth.signOut();
+          await signOut();
         } catch (signOutError) {
           logger.error('Error during sign out:', signOutError);
         }

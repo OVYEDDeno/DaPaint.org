@@ -10,6 +10,9 @@ const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get("window");
 const ACTION_BAR_ALLOWANCE = 110; // tighter allowance to keep the card tall
 const CARD_HEIGHT = Math.max(SCREEN_HEIGHT - ACTION_BAR_ALLOWANCE, SCREEN_HEIGHT * 0.85);
 
+// Preload the fallback image to avoid loading delays
+const FALLBACK_IMAGE = require("../../assets/logo.png");
+
 export default function SwipeCard({ dapaint }: { dapaint: DaPaint }) {
   const formatDate = (dateString: string) =>
     new Date(dateString).toLocaleDateString("en-US", { month: "short", day: "numeric" });
@@ -17,17 +20,22 @@ export default function SwipeCard({ dapaint }: { dapaint: DaPaint }) {
   const formatTime = (dateString: string) =>
     new Date(dateString).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", hour12: true });
 
-  const fallbackSource: ImageSourcePropType = require("../../assets/logo.png");
-
   const hostImg = getProfilePicUrl(dapaint.host_image_url);
-  const bgSource: ImageSourcePropType = hostImg ? { uri: hostImg } : fallbackSource;
+  const bgSource: ImageSourcePropType = hostImg ? { uri: hostImg } : FALLBACK_IMAGE;
 
   const price = Number.parseFloat(String(dapaint.ticket_price ?? "0")) || 0;
   const showPrice = price > 0;
 
   return (
     <BlurView intensity={28} tint="light" style={styles.card}>
-      <Image source={bgSource} style={styles.backgroundImage} resizeMode="contain" />
+      <Image 
+        source={bgSource} 
+        style={styles.backgroundImage} 
+        resizeMode="contain" 
+        // Optimize image loading
+        defaultSource={FALLBACK_IMAGE}
+        onError={() => console.log(`Failed to load image for ${dapaint.host_display_name}`)}
+      />
 
       <View style={styles.topCluster}>
         <View style={styles.hostBadge}>

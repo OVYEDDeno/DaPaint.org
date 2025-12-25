@@ -11,18 +11,23 @@ class UserDataManager {
   private userData: UserProfile | null = null;
   private loadingPromise: Promise<UserProfile | null> | null = null;
   private lastFetchTime: number = 0;
-  private cacheExpiry: number = 5 * 60 * 1000; // 5 minutes cache
+  // Increase cache expiry from 5 minutes to 10 minutes to reduce API calls
+  private cacheExpiry: number = 10 * 60 * 1000; // 10 minutes cache
   private storageKey: string = 'userDataCache';
+  private storageLoadPromise: Promise<void> | null = null;
 
   constructor() {
     // Try to load from AsyncStorage on initialization
-    this.loadFromStorage();
+    this.storageLoadPromise = this.loadFromStorage();
   }
 
   /**
    * Get current user data with caching
    */
   async getUserData(forceRefresh: boolean = false): Promise<UserProfile | null> {
+    if (this.storageLoadPromise) {
+      await this.storageLoadPromise;
+    }
     const now = Date.now();
 
     // Ensure we only serve cached data for an active session
@@ -175,21 +180,20 @@ class UserDataManager {
   /**
    * Load from AsyncStorage
    */
-  private loadFromStorage(): void {
+  private async loadFromStorage(): Promise<void> {
     try {
-      AsyncStorage.getItem(this.storageKey).then(cached => {
-        if (cached) {
-          const cacheData = JSON.parse(cached);
-          const now = Date.now();
-          
-          // Check if cache is still valid
-          if ((now - cacheData.timestamp) < this.cacheExpiry) {
-            this.userData = cacheData.data;
-            this.lastFetchTime = cacheData.timestamp;
-            logger.debug('Loaded user data from storage cache');
-          }
+      const cached = await AsyncStorage.getItem(this.storageKey);
+      if (cached) {
+        const cacheData = JSON.parse(cached);
+        const now = Date.now();
+        
+        // Check if cache is still valid
+        if ((now - cacheData.timestamp) < this.cacheExpiry) {
+          this.userData = cacheData.data;
+          this.lastFetchTime = cacheData.timestamp;
+          logger.debug('Loaded user data from storage cache');
         }
-      });
+      }
     } catch (error) {
       logger.debug('Could not load user data from storage:', error);
     }

@@ -74,7 +74,7 @@ async function debugFeed() {
       console.log('   ✅ You are a FOE in a DaPaint:', foeDaPaint.id);
       console.log('      Title:', foeDaPaint.dapaint);
       console.log('      Status:', foeDaPaint.status);
-    } else if (teamParticipations && teamParticipations.length > 0) {
+    } else if (teamParticipations && teamParticipations.length > 0 && teamParticipations[0]) {
       console.log('   ✅ You are in a TEAM DaPaint:', teamParticipations[0].dapaint_id);
     } else {
       console.log('   ℹ️  You have NO active DaPaint');
