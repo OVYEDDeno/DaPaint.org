@@ -136,10 +136,10 @@ export default function TabsLayout() {
         tabBarStyle: hideTabBar ? [styles.tabBar, styles.tabBarHidden] : styles.tabBar,
         tabBarBackground: () => (
           Platform.OS === 'web' ? (
-            <View style={styles.tabBarBackdrop} />
+            <View style={styles.tabBarBackdropWeb} />
           ) : (
-            <BlurView intensity={22} tint="light" style={StyleSheet.absoluteFillObject}>
-              <View style={styles.tabBarBackdrop} />
+            <BlurView intensity={28} tint="light" style={StyleSheet.absoluteFillObject}>
+              <View style={styles.tabBarBackdropNative} />
             </BlurView>
           )
         ),
@@ -213,16 +213,31 @@ const styles = StyleSheet.create({
     borderRadius: 0,
     alignSelf: 'center',
     overflow: 'hidden',
-    shadowColor: 'transparent',
-    shadowOpacity: 0,
-    shadowRadius: 0,
-    shadowOffset: { width: 0, height: 0 },
-    elevation: 0,
+    ...Platform.select({
+      ios: {
+        shadowColor: '#000',
+        shadowOpacity: 0.12,
+        shadowRadius: 18,
+        shadowOffset: { width: 0, height: -8 },
+      },
+      android: {
+        elevation: 10,
+      },
+      default: {
+        boxShadow: '0px -8px 18px rgba(0,0,0,0.12)',
+      },
+    }),
   },
-  tabBarBackdrop: {
+  tabBarBackdropNative: {
     flex: 1,
-    backgroundColor: 'rgba(255,255,255,0.55)',
+    backgroundColor: 'rgba(255,255,255,0.22)',
   },
+  tabBarBackdropWeb: ({
+    flex: 1,
+    backgroundColor: 'rgba(255,255,255,0.32)',
+    backdropFilter: 'blur(18px)',
+    WebkitBackdropFilter: 'blur(18px)',
+  } as any),
   tabBarHidden: {
     display: 'none',
   },

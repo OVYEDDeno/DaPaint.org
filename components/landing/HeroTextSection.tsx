@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, StyleSheet, Pressable } from 'react-native';
+import { View, Text, StyleSheet, Pressable, Platform } from 'react-native';
 import { SocialProofSection } from './SocialProofSection';
 
 interface HeroTextSectionProps {
@@ -56,9 +56,16 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     marginTop: 20,
     marginBottom: 10,
-    textShadowColor: 'rgba(0, 0, 0, 0.25)',
-    textShadowOffset: { width: 0, height: 1 },
-    textShadowRadius: 3,
+    ...Platform.select({
+      web: {
+        textShadow: '0px 1px 3px rgba(0, 0, 0, 0.25)',
+      },
+      default: {
+        textShadowColor: 'rgba(0, 0, 0, 0.25)',
+        textShadowOffset: { width: 0, height: 1 },
+        textShadowRadius: 3,
+      },
+    }),
   },
   subtitle: {
     color: '#005c82',
@@ -67,9 +74,16 @@ const styles = StyleSheet.create({
     opacity: 0.85,
     marginBottom: 20,
     marginHorizontal: 30,
-    textShadowColor: 'rgba(0, 0, 0, 0.25)',
-    textShadowOffset: { width: 0, height: 1 },
-    textShadowRadius: 3,
+    ...Platform.select({
+      web: {
+        textShadow: '0px 1px 3px rgba(0, 0, 0, 0.25)',
+      },
+      default: {
+        textShadowColor: 'rgba(0, 0, 0, 0.25)',
+        textShadowOffset: { width: 0, height: 1 },
+        textShadowRadius: 3,
+      },
+    }),
   },
   buttonContainer: {
     alignItems: 'center',

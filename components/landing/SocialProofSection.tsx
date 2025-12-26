@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, StyleSheet } from 'react-native';
+import { View, Text, StyleSheet, Platform } from 'react-native';
 
 interface SocialProofSectionProps {
   animation?: any;
@@ -58,10 +58,17 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     borderColor: 'rgba(255,255,255,0.5)',
     borderWidth: 2,
-    shadowColor: 'rgba(0, 0, 0, 0.35)',
-    shadowOffset: { width: 0, height: 6 },
-    shadowRadius: 10,
-    elevation: 8,
+    ...Platform.select({
+      web: {
+        boxShadow: '0px 6px 10px rgba(0,0,0,0.35)',
+      },
+      default: {
+        shadowColor: 'rgba(0, 0, 0, 0.35)',
+        shadowOffset: { width: 0, height: 6 },
+        shadowRadius: 10,
+        elevation: 8,
+      },
+    }),
   },
   avatarText: {
     color: 'white',

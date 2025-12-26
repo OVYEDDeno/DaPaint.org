@@ -1,5 +1,5 @@
 import React from "react";
-import { View, Text, Image, StyleSheet, Dimensions, Pressable } from "react-native";
+import { View, Text, Image, StyleSheet, Dimensions, Pressable, Platform } from "react-native";
 import { theme } from "../../constants/theme";
 
 const { height } = Dimensions.get("window");
@@ -105,9 +105,16 @@ const styles = StyleSheet.create({
     fontWeight: "800",
     textAlign: "center",
     marginBottom: 16,
-    textShadowColor: "rgba(0, 0, 0, 0.1)",
-    textShadowOffset: { width: 0, height: 1 },
-    textShadowRadius: 2,
+    ...Platform.select({
+      web: {
+        textShadow: "0px 1px 2px rgba(0, 0, 0, 0.1)",
+      },
+      default: {
+        textShadowColor: "rgba(0, 0, 0, 0.1)",
+        textShadowOffset: { width: 0, height: 1 },
+        textShadowRadius: 2,
+      },
+    }),
   },
   subtitle: {
     fontSize: 17,
@@ -116,9 +123,16 @@ const styles = StyleSheet.create({
     textAlign: "center",
     marginBottom: 20,
     paddingHorizontal: 16,
-    textShadowColor: "rgba(255, 255, 255, 0.8)",
-    textShadowOffset: { width: 0, height: 1 },
-    textShadowRadius: 1,
+    ...Platform.select({
+      web: {
+        textShadow: "0px 1px 1px rgba(255, 255, 255, 0.8)",
+      },
+      default: {
+        textShadowColor: "rgba(255, 255, 255, 0.8)",
+        textShadowOffset: { width: 0, height: 1 },
+        textShadowRadius: 1,
+      },
+    }),
   },
   faqButton: {
     backgroundColor: theme.buttons.faq.background,
@@ -135,4 +149,3 @@ const styles = StyleSheet.create({
     letterSpacing: 0.5,
   },
 });
-

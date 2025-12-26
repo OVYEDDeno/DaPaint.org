@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, StyleSheet } from 'react-native';
+import { View, StyleSheet, Platform } from 'react-native';
 import AuthSection from './AuthSection';
 
 interface AuthFormSectionProps {
@@ -37,6 +37,6 @@ const styles = StyleSheet.create({
   },
   authContainer: {
     width: '100%',
-    maxWidth: 400,
+    maxWidth: Platform.OS === 'web' ? 460 : 400,
   },
 });

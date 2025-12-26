@@ -3,6 +3,7 @@ import React, { useMemo, useRef } from "react";
 import { View, Text, StyleSheet, Pressable, Alert, Platform } from "react-native";
 import type { DaPaint } from "../../lib/api/dapaints";
 import { theme } from "../../constants/theme";
+import BackgroundLayer from "../ui/BackgroundLayer";
 import * as Sharing from 'expo-sharing';
 
 // Conditional import for view shot to avoid web issues
@@ -81,6 +82,7 @@ export default function MatchScreen({ dapaint, onGoToActive }: MatchScreenProps)
 
   return (
     <View style={styles.container}>
+      <BackgroundLayer />
       <View ref={viewRef} style={styles.content} collapsable={false}>
         <View style={styles.iconWrap}>
           <Text style={styles.emoji}>🎉</Text>

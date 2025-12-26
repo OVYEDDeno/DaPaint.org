@@ -1,12 +1,11 @@
 import { useEffect, useState, useCallback } from "react";
-import { View, Text, StyleSheet, Alert, Platform, Image, LayoutChangeEvent, Pressable } from "react-native";
+import { View, Text, StyleSheet, Alert, Platform, Image } from "react-native";
 import { useRouter } from "expo-router";
 import { supabase } from "../../lib/supabase";
 import { getSession } from "../../lib/api/auth";
 import {
   DaPaint,
   getAvailableDaPaints,
-  getExploreDaPaints,
   getLuckyDaPaints,
   joinDaPaint,
 
@@ -20,6 +19,7 @@ import AdScreen from "../../components/swipe/AdScreen";
 import MatchScreen from "../../components/swipe/MatchScreen";
 import { theme } from "../../constants/theme";
 import BackgroundLayer from "../../components/ui/BackgroundLayer";
+import FeedbackButton from "../../components/ui/FeedbackButton";
 import { userDataManager } from "../../lib/UserDataManager";
 
 const WINSTREAK_GOAL = 30;
@@ -28,12 +28,10 @@ const FEED_CACHE_TTL_MS = 5 * 60 * 1000;
 const feedCache: {
   userId: string | null;
   feed: DaPaint[];
-  explore: DaPaint[];
   updatedAt: number;
 } = {
   userId: null,
   feed: [],
-  explore: [],
   updatedAt: 0,
 };
 
@@ -43,21 +41,18 @@ const getCachedFeed = (userId: string) => {
   return feedCache;
 };
 
-const updateFeedCache = (userId: string, feed: DaPaint[], explore: DaPaint[]) => {
+const updateFeedCache = (userId: string, feed: DaPaint[]) => {
   feedCache.userId = userId;
   // Use shallow copy to prevent accidental mutations
   feedCache.feed = [...feed];
-  feedCache.explore = [...explore];
   feedCache.updatedAt = Date.now();
 };
 
 export default function FeedScreen() {
   const router = useRouter();
-  const [activeTab, setActiveTab] = useState<"feed" | "explore">("feed");
+  const [feedMode, setFeedMode] = useState<"feed" | "lucky">("feed");
   const [dapaints, setDaPaints] = useState<DaPaint[]>([]);
-  const [exploreDaPaints, setExploreDaPaints] = useState<DaPaint[]>([]);
   const [userData, setUserData] = useState<any>(null);
-  const [headerHeight, setHeaderHeight] = useState(0);
 
   const [matchedDaPaint, setMatchedDaPaint] = useState<DaPaint | null>(null);
   const [pendingMatch, setPendingMatch] = useState<DaPaint | null>(null);
@@ -95,13 +90,9 @@ export default function FeedScreen() {
       const feedList = await attachUserImagesToDaPaints(feedListRaw);
       setDaPaints(feedList);
 
-      const exploreListRaw = await getExploreDaPaints(userId);
-      logger.debug("Explore results count:", exploreListRaw.length);
-      
-      const exploreList = await attachUserImagesToDaPaints(exploreListRaw);
-      setExploreDaPaints(exploreList);
-      updateFeedCache(userId, feedList, exploreList);
-      
+      setFeedMode("feed");
+      updateFeedCache(userId, feedList);
+
       logger.debug("✅ Results found:", feedList.length);
       if (feedList.length === 0) {
         logger.debug("⚠️ No DaPaints found with these filters");
@@ -110,7 +101,6 @@ export default function FeedScreen() {
       logger.error("Error loading feed:", error);
       Alert.alert("Error", "Failed to load your feed. Please try again.");
       setDaPaints([]);
-      setExploreDaPaints([]);
     }
   }, [userData]);
 
@@ -123,9 +113,8 @@ export default function FeedScreen() {
 
       const luckyListRaw = await getLuckyDaPaints(userId);
       const luckyList = await attachUserImagesToDaPaints(luckyListRaw);
-      setExploreDaPaints(luckyList); // Use the same state as explore
-      const currentFeed = feedCache.userId === userId ? feedCache.feed : dapaints;
-      updateFeedCache(userId, currentFeed, luckyList);
+      setDaPaints(luckyList);
+      setFeedMode("lucky");
     } catch (error) {
       logger.error("Error loading lucky feed:", error);
       Alert.alert("Error", "Failed to load lucky feed. Please try again.");
@@ -179,7 +168,7 @@ export default function FeedScreen() {
       const cached = getCachedFeed(userData.id);
       if (cached) {
         setDaPaints(cached.feed);
-        setExploreDaPaints(cached.explore);
+        setFeedMode("feed");
       }
       loadFeed();
       setHasLoaded(true);
@@ -229,7 +218,6 @@ export default function FeedScreen() {
   };
   
   const handleFeelingLucky = () => {
-    setActiveTab("explore");
     // Load DaPaints from different zipcodes regardless of winstreak when feeling lucky
     if (userData?.id) {
       loadLuckyDaPaints();
@@ -237,9 +225,6 @@ export default function FeedScreen() {
   };
   
   const handleGoToActive = () => router.push("/(tabs)/active?fromMatch=true");
-  const handleHeaderLayout = useCallback((e: LayoutChangeEvent) => {
-    setHeaderHeight(e.nativeEvent.layout.height);
-  }, []);
 
   const handleSwipeLeft = (dapaint: DaPaint) => {
     logger.debug(`Swiped left on ${dapaint.dapaint}`);
@@ -300,9 +285,25 @@ export default function FeedScreen() {
         setMatchedDaPaint(pendingMatch);
         setPendingMatch(null);
       } catch (error: any) {
-        logger.error("Error joining DaPaint:", error);
+        const fallback = "Failed to join DaPaint";
+        let errorMsg: string =
+          (typeof error === "string" && error) ||
+          error?.message ||
+          error?.error_description ||
+          error?.details ||
+          error?.hint ||
+          fallback;
 
-        const errorMsg = error?.message || "Failed to join DaPaint";
+        if (errorMsg === fallback) {
+          try {
+            const maybeJson = JSON.stringify(error);
+            if (maybeJson && maybeJson !== "{}") errorMsg = maybeJson;
+          } catch {
+            // ignore
+          }
+        }
+
+        logger.error("Error joining DaPaint:", errorMsg, error);
         if (typeof errorMsg === "string" && errorMsg.includes("already taken")) {
           Alert.alert("Oops!", "Someone just joined this DaPaint!");
         } else if (typeof errorMsg === "string" && errorMsg.includes("already in an active DaPaint")) {
@@ -326,11 +327,10 @@ export default function FeedScreen() {
     loadFeed();
   }, [loadFeed]);
 
-  const currentDaPaints = activeTab === "feed" ? dapaints : exploreDaPaints;
-  const isExploreEmpty = activeTab === "explore" && exploreDaPaints.length === 0;
+  const currentDaPaints = dapaints;
+  const isExploreEmpty = feedMode === "lucky" && dapaints.length === 0;
   const winstreakValue = userData?.current_winstreak ?? 0;
   const winstreakProgress = Math.min(1, winstreakValue / WINSTREAK_GOAL);
-  const winsLeft = Math.max(0, WINSTREAK_GOAL - winstreakValue);
 
   if (showAd) {
     return (
@@ -356,75 +356,56 @@ export default function FeedScreen() {
     <View style={styles.container}>
       <BackgroundLayer />
       {/* Header */}
-      <View style={styles.header} onLayout={handleHeaderLayout}>
+      <View style={styles.header}>
         <View style={styles.progressCluster}>
           <View style={styles.progressBadge}>
             <Text style={styles.progressBadgeText}>{winstreakValue}</Text>
           </View>
 
-          <View style={styles.barWrap}>
-            <View style={styles.progressTrack}>
-              <View style={[styles.progressFill, { width: `${winstreakProgress * 100}%` }]} />
-            </View>
-            <Image source={require("../../assets/logo.png")} style={styles.logoOverlay} resizeMode="contain" />
+        <View style={styles.barWrap}>
+          <View style={styles.progressTrack}>
+            <View style={[styles.progressFill, { width: `${winstreakProgress * 100}%` }]} />
           </View>
-
-          <View style={styles.progressBadge}>
-            <Text style={styles.progressBadgeText}>{WINSTREAK_GOAL}</Text>
-          </View>
+          <Image source={require("../../assets/logo.png")} style={styles.logoOverlay} resizeMode="contain" />
         </View>
 
-        <Text style={styles.motivation}>
-          {winsLeft} left until you're a millionaire.
-        </Text>
-
-        <View style={styles.tabs}>
-          <Pressable
-            style={[styles.tab, activeTab === "feed" && styles.tabActive]}
-            onPress={() => setActiveTab("feed")}
-          >
-            <Text style={[styles.tabText, activeTab === "feed" && styles.tabTextActive]}>
-              Feed
-            </Text>
-          </Pressable>
-          <Pressable
-            style={[styles.tab, activeTab === "explore" && styles.tabActive]}
-            onPress={() => setActiveTab("explore")}
-          >
-            <Text style={[styles.tabText, activeTab === "explore" && styles.tabTextActive]}>
-              Explore
-            </Text>
-          </Pressable>
+        <View style={styles.progressBadge}>
+          <Text style={styles.progressBadgeText}>{WINSTREAK_GOAL}</Text>
         </View>
-
       </View>
 
-      {/* Content */}
-      {currentDaPaints.length === 0 ? (
-        <EmptyFeed
-          userWinstreak={winstreakValue}
-          userZipcode={userData?.zipcode || ""}
-          onCreateDaPaint={handleCreateDaPaint}
-          onFeelingLucky={handleFeelingLucky}
-          isExploreEmpty={isExploreEmpty}
-        />
-      ) : (
-        <SwipeFeed
-          dapaints={currentDaPaints}
-          onSwipeLeft={handleSwipeLeft}
-          onSwipeRight={handleSwipeRight}
-          topOffset={headerHeight}
-          onExhausted={() => {
-            if (activeTab === "feed") {
-              setDaPaints([]);
-            } else {
-              // For explore tab, try to reload data instead of clearing
-              loadLuckyDaPaints();
-            }
-          }}
-        />
-      )}
     </View>
+
+    {/* Content */}
+    {currentDaPaints.length === 0 ? (
+      <EmptyFeed
+        userWinstreak={winstreakValue}
+        userZipcode={userData?.zipcode || ""}
+        onCreateDaPaint={handleCreateDaPaint}
+        onFeelingLucky={handleFeelingLucky}
+        isExploreEmpty={isExploreEmpty}
+      />
+    ) : (
+      <SwipeFeed
+        dapaints={currentDaPaints}
+        onSwipeLeft={handleSwipeLeft}
+        onSwipeRight={handleSwipeRight}
+        topOffset={0}
+        onExhausted={() => {
+          if (feedMode === "lucky") {
+            setFeedMode("feed");
+            setHasLoaded(false);
+            loadFeed();
+            return;
+          }
+          setDaPaints([]);
+        }}
+      />
+    )}
+    
+    {/* Feedback Button */}
+    <FeedbackButton visible={true} />
+  </View>
   );
 }
 
@@ -527,38 +508,5 @@ const styles = StyleSheet.create({
   settingsIcon: {
     fontSize: 22,
     color: theme.colors.textPrimary,
-  },
-  motivation: {
-    ...theme.type.bodyMedium,
-    color: theme.colors.textSecondary,
-    textAlign: "center",
-    width: "100%",
-  },
-
-  tabs: {
-    flexDirection: "row",
-    paddingHorizontal: theme.space.md,
-    paddingBottom: theme.space.sm,
-    gap: theme.space.sm,
-  },
-  tab: {
-    flex: 1,
-    paddingVertical: theme.space.xs,
-    borderRadius: theme.radius.full,
-    alignItems: "center",
-    backgroundColor: theme.colors.surface,
-    borderWidth: 1,
-    borderColor: theme.colors.border,
-  },
-  tabActive: {
-    backgroundColor: "rgba(46,196,255,0.14)",
-    borderColor: "rgba(46,196,255,0.30)",
-  },
-  tabText: {
-    ...theme.type.labelMedium,
-    color: 'rgba(0,92,130,0.65)',
-  },
-  tabTextActive: {
-    color: '#005c82',
   },
 });

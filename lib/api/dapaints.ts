@@ -3,6 +3,51 @@ import { supabase } from "../supabase";
 import logger from "../logger";
 
 /**
+ * Automatically report errors to the feedback table
+ */
+async function reportError(
+  error: any,
+  context: string,
+  severity: 'critical' | 'high' | 'medium' | 'low' = 'high'
+) {
+  try {
+    const { data: { user } } = await supabase.auth.getUser();
+    
+    const errorDetails = {
+      context,
+      error_name: error?.name,
+      error_message: error?.message,
+      error_code: error?.code,
+      error_details: error?.details,
+      error_hint: error?.hint,
+      timestamp: new Date().toISOString(),
+      user_agent: typeof window !== 'undefined' ? window.navigator.userAgent : 'unknown',
+      page_url: typeof window !== 'undefined' ? window.location.href : 'unknown'
+    };
+
+    await supabase.from('feedback').insert({
+      user_id: user?.id || null,
+      feedback_type: 'error',  // CHANGED FROM 'type' to 'feedback_type'
+      severity,
+      message: `${context}: ${error?.message || 'Unknown error'}`,
+      error_code: error?.code || 'UNKNOWN',
+      error_details: errorDetails,
+      stack_trace: error?.stack || null,
+      user_agent: errorDetails.user_agent,
+      page_url: errorDetails.page_url
+    });
+
+    logger.debug('Error reported to backend:', context);
+  } catch (reportError) {
+    // Don't throw if error reporting fails
+    logger.error('Failed to report error to backend:', reportError);
+  }
+}
+
+// Export the reportError function so other parts of the app can use it
+export { reportError };
+
+/**
  * Create a new DaPaint
  */
 export async function createDaPaint(
@@ -100,30 +145,36 @@ const normalizeZip = (zip?: string | null): string | null =>
 
 /**
  * Join a DaPaint (either 1v1 or team)
- * Critical: Uses transactions to prevent race conditions
- * Enhanced: Adds additional validation to enforce user exclusivity
+ * UPDATED: Uses join_dapaint function and auto-reports errors
  */
 export async function joinDaPaint(
   dapaintId: string,
   userId: string,
   displayName: string
-): Promise<{ success: boolean; message: string; shouldRemoveFromCurrent?: boolean; currentDaPaint?: DaPaint }> {
+): Promise<{ success: boolean; message: string; shouldRemoveFromCurrent?: boolean; currentDaPaint?: any }> {
+  const formatRpcError = (err: any): string => {
+    if (!err) return "Unknown error";
+    if (typeof err === "string") return err;
+    if (err instanceof Error) return err.message || "Unknown error";
+    const message = typeof err.message === "string" ? err.message : "Request failed";
+    const details = typeof err.details === "string" ? err.details : "";
+    const hint = typeof err.hint === "string" ? err.hint : "";
+    const code = typeof err.code === "string" ? err.code : "";
+    return [message, code && `(${code})`, details, hint].filter(Boolean).join(" ");
+  };
+
   try {
     // First, check if user is already in an active DaPaint
     const activeDaPaint = await getActiveDaPaint(userId);
     if (activeDaPaint) {
-      // User is already in an active DaPaint, check if they want to switch
       const startsAt = new Date(activeDaPaint.starts_at);
       const now = new Date();
       const hoursUntilStart = (startsAt.getTime() - now.getTime()) / (1000 * 60 * 60);
       const isWithin48Hours = hoursUntilStart <= 48;
       const hasFoe = !!activeDaPaint.foe_id;
       
-      // Determine what happens if they leave their current DaPaint
       if (activeDaPaint.host_id === userId) {
-        // User is host
         if (hasFoe && isWithin48Hours) {
-          // Forfeit if within 48 hours
           return {
             success: false,
             message: `You're hosting "${activeDaPaint.dapaint}" starting in ${Math.max(0, Math.floor(hoursUntilStart))}h. Leaving now = FORFEIT. You must complete or forfeit this DaPaint first.`,
@@ -131,7 +182,6 @@ export async function joinDaPaint(
             currentDaPaint: activeDaPaint
           };
         } else if (hasFoe) {
-          // Delete if outside 48 hours
           return {
             success: false,
             message: `You're hosting "${activeDaPaint.dapaint}". Leaving now will delete it. Continue?`,
@@ -139,7 +189,6 @@ export async function joinDaPaint(
             currentDaPaint: activeDaPaint
           };
         } else {
-          // Delete unmatched host DaPaint
           return {
             success: false,
             message: `You're hosting "${activeDaPaint.dapaint}" with no foe yet. Leaving now will delete it. Continue?`,
@@ -148,9 +197,7 @@ export async function joinDaPaint(
           };
         }
       } else if (activeDaPaint.foe_id === userId) {
-        // User is foe
         if (isWithin48Hours) {
-          // Forfeit if within 48 hours
           return {
             success: false,
             message: `You're in "${activeDaPaint.dapaint}" starting in ${Math.max(0, Math.floor(hoursUntilStart))}h. Leaving now = FORFEIT. Complete this DaPaint first.`,
@@ -158,7 +205,6 @@ export async function joinDaPaint(
             currentDaPaint: activeDaPaint
           };
         } else {
-          // Just leave if outside 48 hours
           return {
             success: false,
             message: `You're in "${activeDaPaint.dapaint}". Leave or complete it first before joining another.`,
@@ -167,41 +213,62 @@ export async function joinDaPaint(
           };
         }
       } else {
-        // User is in team DaPaint
         return {
           success: false,
           message: `You're in team DaPaint "${activeDaPaint.dapaint}". Leave or complete it first before joining another.`,
-          shouldRemoveFromCurrent: false, // Team members can leave freely
+          shouldRemoveFromCurrent: false,
           currentDaPaint: activeDaPaint
         };
       }
     }
 
-    // Use safe RPC function to prevent race conditions and enforce exclusivity
-    const { data, error } = await supabase.rpc("join_dapaint_safe", {
+    // Call join_dapaint RPC function
+    const { data, error } = await supabase.rpc('join_dapaint', {
       p_dapaint_id: dapaintId,
       p_user_id: userId,
-      p_display_name: displayName,
+      p_display_name: displayName
     });
 
     if (error) {
-      // Handle specific error cases
-      if (error.message && error.message.includes("already in an active DaPaint")) {
-        throw new Error("You're already in an active DaPaint. Please complete or leave it first.");
+      const errorMsg = formatRpcError(error);
+      logger.error("Error joining DaPaint:", errorMsg, error);
+      
+      // Auto-report critical errors
+      await reportError(error, 'joinDaPaint RPC call failed', 'critical');
+      
+      return { success: false, message: errorMsg };
+    }
+
+    // Parse RPC result
+    const result = Array.isArray(data) ? data[0] : data;
+    
+    if (typeof result === "object" && result) {
+      const success = Boolean(result.success);
+      const message = result.message || (success ? "Successfully joined DaPaint" : "Failed to join DaPaint");
+      
+      if (!success) {
+        // Report non-critical join failures
+        await reportError(
+          { message, code: result.error_code || 'JOIN_FAILED' },
+          'joinDaPaint failed',
+          'medium'
+        );
       }
-      throw error;
+      
+      return { success, message };
     }
 
-    // Check if join was successful
-    if (!data || !data.success) {
-      throw new Error(data?.message || "Failed to join DaPaint");
-    }
+    logger.debug("Successfully joined DaPaint");
+    return { success: true, message: "Successfully joined DaPaint" };
 
-    logger.debug("Successfully joined DaPaint:", data.message);
-    return { success: true, message: data.message };
   } catch (error: any) {
-    logger.error("Error joining DaPaint:", error);
-    throw error;
+    const errorMsg = formatRpcError(error);
+    logger.error("Error joining DaPaint:", errorMsg, error);
+    
+    // Auto-report unexpected errors
+    await reportError(error, 'joinDaPaint unexpected error', 'critical');
+    
+    return { success: false, message: errorMsg };
   }
 }
 
@@ -436,14 +503,9 @@ async function checkTeamHasFoes(dapaintId: string): Promise<boolean> {
  * Get user's ONE active DaPaint (user can only be in ONE DaPaint at a time)
  * Enhanced to enforce data integrity and handle edge cases
  */
-export async function getActiveDaPaint(
-  userId: string
-): Promise<DaPaint | null> {
+// Helper function to get active DaPaint
+async function getActiveDaPaint(userId: string): Promise<any | null> {
   try {
-    // NOTE: Temporarily disabling checkAndHandleExpiredDaPaints during active data fetch
-    // to avoid transaction interference per project memory guidelines
-    // This function was intentionally removed as it was unused
-    // Check if user is host or foe in any 1v1 DaPaint
     const { data: as1v1, error: error1v1 } = await supabase
       .from("dapaints")
       .select("*")
@@ -451,26 +513,24 @@ export async function getActiveDaPaint(
       .in("status", ["scheduled", "pending_balance", "live"])
       .order("created_at", { ascending: false });
 
-    if (error1v1) throw error1v1;
-
-    // Data integrity check - user should only be in one 1v1 DaPaint
-    if (as1v1 && as1v1.length > 1) {
-      logger.warn(`Data Integrity Violation: User ${userId} is in ${as1v1.length} active 1v1 DaPaints. This violates the exclusivity constraint.`);
-      // Return the most recent one
-      return as1v1[0];
+    if (error1v1) {
+      await reportError(error1v1, 'getActiveDaPaint query failed', 'high');
+      throw error1v1;
     }
 
     if (as1v1 && as1v1.length > 0) {
       return as1v1[0];
     }
 
-    // Check if user is in any team DaPaint
     const { data: teamParticipants, error: teamError } = await supabase
       .from("dapaint_participants")
       .select("dapaint_id")
       .eq("user_id", userId);
 
-    if (teamError) throw teamError;
+    if (teamError) {
+      await reportError(teamError, 'getActiveDaPaint team query failed', 'high');
+      throw teamError;
+    }
 
     if (teamParticipants && teamParticipants.length > 0) {
       const dapaintIds = teamParticipants.map((p) => p.dapaint_id);
@@ -482,13 +542,9 @@ export async function getActiveDaPaint(
         .in("status", ["scheduled", "pending_balance", "live"])
         .order("created_at", { ascending: false });
 
-      if (dapaintsError) throw dapaintsError;
-
-      // Data integrity check - user should only be in one team DaPaint
-      if (teamDaPaints && teamDaPaints.length > 1) {
-        logger.warn(`Data Integrity Violation: User ${userId} is in ${teamDaPaints.length} active team DaPaints. This violates the exclusivity constraint.`);
-        // Return the most recent one
-        return teamDaPaints[0];
+      if (dapaintsError) {
+        await reportError(dapaintsError, 'getActiveDaPaint team dapaints query failed', 'high');
+        throw dapaintsError;
       }
 
       if (teamDaPaints && teamDaPaints.length > 0) {

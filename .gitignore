@@ -39,3 +39,4 @@ test-*.js
 apply-*.js
 simple-*.js
 final-*.js
+.env.local

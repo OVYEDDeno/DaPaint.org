@@ -38,6 +38,7 @@ export default function AdScreen({
   rewardAmount = "$1,000,000",
 }: AdScreenProps) {
   const [countdown, setCountdown] = useState(5);
+  const useNativeDriver = Platform.OS !== "web";
 
   // subtle entrance
   const fade = useRef(new Animated.Value(0)).current;
@@ -61,12 +62,12 @@ If you don’t post, you may forfeit the reward even if you hit ${winstreakGoal}
       Animated.timing(fade, {
         toValue: 1,
         duration: 220,
-        useNativeDriver: true,
+        useNativeDriver,
       }),
       Animated.timing(rise, {
         toValue: 0,
         duration: 220,
-        useNativeDriver: true,
+        useNativeDriver,
       }),
     ]).start();
   }, [fade, rise]);
@@ -126,8 +127,11 @@ If you don’t post, you may forfeit the reward even if you hit ${winstreakGoal}
         </View>
       </Animated.View>
 
-      {/* Bottom “story-worthy” bar */}
-      <View style={styles.bottomWrap} pointerEvents="box-none">
+      {/* Bottom "story-worthy" bar */}
+      <View
+        style={[styles.bottomWrap, Platform.OS === "web" ? ({ pointerEvents: "box-none" } as any) : null]}
+        {...(Platform.OS === "web" ? {} : ({ pointerEvents: "box-none" } as const))}
+      >
         <BlurView intensity={28} tint="light" style={styles.bottomBlur}>
           <LinearGradient
             colors={["rgba(255,255,255,0.14)", "rgba(255,255,255,0.04)"]}

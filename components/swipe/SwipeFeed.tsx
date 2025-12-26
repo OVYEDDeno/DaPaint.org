@@ -20,6 +20,7 @@ import { theme } from "../../constants/theme";
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
 const SWIPE_THRESHOLD = SCREEN_WIDTH * 0.38;
+const USE_NATIVE_DRIVER = Platform.OS !== "web";
 
 
 
@@ -93,14 +94,14 @@ function SwipeFeedComponent({ dapaints, onSwipeLeft, onSwipeRight, onExhausted, 
       Animated.parallel([
         Animated.spring(position, {
           toValue: { x: toX, y: 0 },
-          useNativeDriver: true,
+          useNativeDriver: USE_NATIVE_DRIVER,
           speed: 14,
           bounciness: 4,
         }),
         Animated.timing(scale, {
           toValue: 0.94,
           duration: 220,
-          useNativeDriver: true,
+          useNativeDriver: USE_NATIVE_DRIVER,
         }),
       ]).start(() => {
         if (direction === "left") {
@@ -130,7 +131,7 @@ function SwipeFeedComponent({ dapaints, onSwipeLeft, onSwipeRight, onExhausted, 
 
     Animated.spring(position, {
       toValue: { x: 0, y: 0 },
-      useNativeDriver: true,
+      useNativeDriver: USE_NATIVE_DRIVER,
       speed: 12,
       bounciness: 4,
     }).start();
@@ -195,7 +196,7 @@ function SwipeFeedComponent({ dapaints, onSwipeLeft, onSwipeRight, onExhausted, 
 
         Animated.spring(position, {
           toValue: { x: 0, y: 0 },
-          useNativeDriver: true,
+          useNativeDriver: USE_NATIVE_DRIVER,
           friction: 6,
         }).start();
       },
@@ -242,7 +243,10 @@ function SwipeFeedComponent({ dapaints, onSwipeLeft, onSwipeRight, onExhausted, 
       </Animated.View>
 
       {/* bottom action bar */}
-      <View style={styles.bottomBarWrap} pointerEvents="box-none">
+      <View
+        style={[styles.bottomBarWrap, Platform.OS === "web" ? ({ pointerEvents: "box-none" } as any) : null]}
+        {...(Platform.OS === "web" ? {} : ({ pointerEvents: "box-none" } as const))}
+      >
         <View style={styles.bottomBar}>
           <View style={styles.actions}>
             <Pressable
@@ -405,11 +409,18 @@ const styles = StyleSheet.create({
     backgroundColor: "rgba(0,92,130,0.08)",
     borderWidth: 0,
     borderColor: "transparent",
-    shadowColor: theme.colors.primaryDeep,
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.12,
-    shadowRadius: 9,
-    elevation: 2,
+    ...Platform.select({
+      web: {
+        boxShadow: "0px 6px 9px rgba(0,92,130,0.12)",
+      },
+      default: {
+        shadowColor: theme.colors.primaryDeep,
+        shadowOffset: { width: 0, height: 6 },
+        shadowOpacity: 0.12,
+        shadowRadius: 9,
+        elevation: 2,
+      },
+    }),
     justifyContent: "center",
     alignItems: "center",
   },
@@ -422,10 +433,6 @@ const styles = StyleSheet.create({
     borderWidth: 0,
     borderColor: "transparent",
     backgroundColor: "rgba(0,92,130,0.08)",
-    shadowColor: theme.colors.primaryDeep,
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.12,
-    shadowRadius: 9,
     ...theme.shadow.small,
   },
   btnSkip: { backgroundColor: 'rgba(255, 69, 58, 0.3)' }, // Pale red

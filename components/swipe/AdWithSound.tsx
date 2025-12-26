@@ -171,18 +171,32 @@ const styles = StyleSheet.create({
     color: theme.colors.surface,
     ...theme.type.displayXL,
     fontFamily: Platform.OS === 'web' ? "Anton, sans-serif" : "Anton",
-    textShadowColor: "rgba(0, 0, 0, 0.9)",
-    textShadowOffset: { width: 0, height: 2 },
-    textShadowRadius: 10,
+    ...Platform.select({
+      web: {
+        textShadow: "0px 2px 10px rgba(0, 0, 0, 0.9)",
+      },
+      default: {
+        textShadowColor: "rgba(0, 0, 0, 0.9)",
+        textShadowOffset: { width: 0, height: 2 },
+        textShadowRadius: 10,
+      },
+    }),
     textAlign: "center",
   },
   warningText: {
     color: theme.colors.surface,
     ...theme.type.labelLarge,
     textAlign: "center",
-    textShadowColor: "rgba(0, 0, 0, 0.9)",
-    textShadowOffset: { width: 0, height: 2 },
-    textShadowRadius: 10,
+    ...Platform.select({
+      web: {
+        textShadow: "0px 2px 10px rgba(0, 0, 0, 0.9)",
+      },
+      default: {
+        textShadowColor: "rgba(0, 0, 0, 0.9)",
+        textShadowOffset: { width: 0, height: 2 },
+        textShadowRadius: 10,
+      },
+    }),
   },
   continueButton: {
     backgroundColor: theme.colors.primaryDeep,

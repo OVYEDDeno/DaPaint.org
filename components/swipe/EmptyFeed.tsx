@@ -1,6 +1,6 @@
 // components/swipe/EmptyFeed.tsx — CINEMATIC EMPTY v1 (theme tokens, no "challenge")
 import React, { useEffect, useRef } from "react";
-import { View, Text, Pressable, StyleSheet, Animated } from "react-native";
+import { View, Text, Pressable, StyleSheet, Animated, Platform } from "react-native";
 import { theme } from "../../constants/theme";
 
 type EmptyFeedProps = {
@@ -19,12 +19,13 @@ export default function EmptyFeed({
   isExploreEmpty,
 }: EmptyFeedProps) {
   const bounce = useRef(new Animated.Value(0)).current;
+  const useNativeDriver = Platform.OS !== "web";
 
   useEffect(() => {
     const loop = Animated.loop(
       Animated.sequence([
-        Animated.timing(bounce, { toValue: -10, duration: 900, useNativeDriver: true }),
-        Animated.timing(bounce, { toValue: 0, duration: 900, useNativeDriver: true }),
+        Animated.timing(bounce, { toValue: -10, duration: 900, useNativeDriver }),
+        Animated.timing(bounce, { toValue: 0, duration: 900, useNativeDriver }),
       ])
     );
     loop.start();

@@ -13,6 +13,7 @@ import { DaPaintButtons, DaPaintColors, DaPaintRadius, DaPaintShadows, DaPaintSp
 import { decode } from 'base64-arraybuffer';
 import { getKeyboardDismissHandler } from '../../lib/webFocusGuard';
 import AuthSection from '../../components/landing/AuthSection';
+import FeedbackButton from '../../components/ui/FeedbackButton';
 
 export default function ProfileScreen() {
   const router = useRouter();
@@ -946,6 +947,9 @@ export default function ProfileScreen() {
           </Pressable>
         </Modal>
       </View>
+      
+      {/* Feedback Button */}
+      <FeedbackButton visible={true} />
     </SafeAreaView>
   );
 }

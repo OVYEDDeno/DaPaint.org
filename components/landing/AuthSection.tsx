@@ -202,7 +202,7 @@ export default function AuthSection({ keyboardOffset }: AuthSectionProps) {
               <View style={styles.inputContainer}>
                 <Text style={styles.inputLabel}>Enter Your Username</Text>
                 <View style={styles.inputRow}>
-                  <View style={styles.inputWrapper}>
+                  <View style={[styles.inputWrapper, !showPasswordInput && styles.inputWrapperWithCta]}>
                     <Text style={styles.inputPrefix}>@</Text>
                     <TextInput
                       style={styles.input}
@@ -222,11 +222,11 @@ export default function AuthSection({ keyboardOffset }: AuthSectionProps) {
                   </View>
                   {!showPasswordInput && (
                     <Pressable
-                      style={[styles.button, styles.primaryButton, { minWidth: 120 }]}
+                      style={[styles.inlineCtaButton]}
                       onPress={handleCheckUsername}
                       disabled={loading}
                     >
-                      <Text style={styles.buttonText}>{loading ? "Checking..." : "Continue"}</Text>
+                      <Text style={styles.buttonText}>{loading ? "Checking..." : "Continue — it‘s free!"}</Text>
                     </Pressable>
                   )}
                 </View>
@@ -298,19 +298,27 @@ const styles = StyleSheet.create({
   bottomContainer: {
     backgroundColor: "#ffffff",
     borderRadius: 28,
-    paddingTop: 12,
-    paddingHorizontal: 16,
-    width: "92%",
+    paddingTop: 16,
+    paddingHorizontal: 18,
+    width: "94%",
     alignSelf: "center",
+    maxWidth: Platform.OS === "web" ? 460 : 420,
     borderWidth: 1,
     borderColor: theme.colors.border,
     zIndex: 9,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: -4 },
-    shadowOpacity: 0.15,
-    shadowRadius: 12,
-    elevation: 8,
-    gap: 12,
+    ...Platform.select({
+      web: {
+        boxShadow: "0px -4px 12px rgba(0,0,0,0.15)",
+      },
+      default: {
+        shadowColor: "#000",
+        shadowOffset: { width: 0, height: -4 },
+        shadowOpacity: 0.15,
+        shadowRadius: 12,
+        elevation: 8,
+      },
+    }),
+    gap: 14,
   },
   termsText: {
     fontSize: 12,
@@ -332,8 +340,7 @@ const styles = StyleSheet.create({
   },
   inputRow: {
     flexDirection: "row",
-    alignItems: "center",
-    gap: 10,
+    alignItems: "stretch",
   },
   inputWrapper: {
     flex: 1,
@@ -341,26 +348,50 @@ const styles = StyleSheet.create({
     alignItems: "center",
     borderWidth: 1.5,
     borderColor: theme.colors.border,
-    borderRadius: 14,
+    borderRadius: 16,
     backgroundColor: theme.colors.surfaceStrong,
-    minHeight: 44,
+    minHeight: 48,
+  },
+  inputWrapperWithCta: {
+    borderTopRightRadius: 0,
+    borderBottomRightRadius: 0,
+    borderRightWidth: 0,
   },
   inputPrefix: {
     color: theme.colors.textPrimary,
     fontSize: 16,
     fontWeight: "600",
-    paddingLeft: 8,
-    paddingRight: 2,
+    paddingLeft: 12,
+    paddingRight: 4,
   },
   input: {
     flex: 1,
-    paddingVertical: 10,
-    paddingHorizontal: 1,
+    paddingVertical: 12,
+    paddingHorizontal: 8,
     color: theme.colors.textPrimary,
     fontSize: 16,
     textAlign: "left",
     textAlignVertical: "center",
     backgroundColor: "transparent",
+  },
+  inlineCtaButton: {
+    minHeight: 48,
+    justifyContent: "center",
+    paddingHorizontal: 14,
+    borderTopRightRadius: 16,
+    borderBottomRightRadius: 16,
+    borderTopLeftRadius: 0,
+    borderBottomLeftRadius: 0,
+    backgroundColor: theme.colors.primaryDeep,
+    borderWidth: 1.5,
+    borderLeftWidth: 0,
+    borderColor: theme.colors.primaryDeep,
+    ...(Platform.OS === "web" ? { cursor: "pointer", userSelect: "none" } : null),
+    shadowColor: "transparent",
+    shadowOpacity: 0,
+    shadowRadius: 0,
+    shadowOffset: { width: 0, height: 0 },
+    elevation: 0,
   },
   ctaContainer: {
     marginTop: 8,

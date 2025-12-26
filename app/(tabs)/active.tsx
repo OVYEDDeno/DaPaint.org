@@ -21,6 +21,7 @@ import { theme } from "../../constants/theme";
 import { getKeyboardDismissHandler } from "../../lib/webFocusGuard";
 import { userDataManager } from "../../lib/UserDataManager";
 import { daPaintDataManager } from "../../lib/DaPaintDataManager";
+import FeedbackButton from "../../components/ui/FeedbackButton";
 
 export default function CreateDaPaintScreen() {
   const router = useRouter();
@@ -39,6 +40,9 @@ export default function CreateDaPaintScreen() {
     display_name: string;
     current_winstreak: number;
   } | null>(null);
+  
+  // Ref to track if we're currently loading data to prevent infinite loops
+  const isLoadingRef = useRef(false);
   const dismissKeyboard = getKeyboardDismissHandler();
   
   // Ref to store the pauseVideo function from AdScreen
@@ -60,19 +64,37 @@ export default function CreateDaPaintScreen() {
         globalAny.setTabBarVisibility(true);
       }
     };
-  }, [showAd, activeDaPaint, userData]);
+  }, [showAd]);
 
   // Preload data on component mount
   useEffect(() => {
     // Kick off background preloads, then use cached data if available.
     userDataManager.preloadUserData();
     daPaintDataManager.preloadActiveDaPaint();
-    loadData();
+    
+    const loadInitialData = async () => {
+      if (!isLoadingRef.current) {
+        setLoading(true);
+        try {
+          await loadData();
+        } finally {
+          setLoading(false);
+        }
+      }
+    };
+    
+    loadInitialData();
   }, []);
 
 
 
-  const loadData = async () => {
+  const loadData = async (): Promise<void> => {
+    // Prevent multiple simultaneous calls to loadData to avoid infinite loops
+    if (isLoadingRef.current) {
+      return;
+    }
+    
+    isLoadingRef.current = true;
     try {
       const cachedUserData = await userDataManager.getUserData();
       if (!cachedUserData) {
@@ -98,6 +120,8 @@ export default function CreateDaPaintScreen() {
     } catch (error) {
       logger.error("Error loading user data:", error);
       Alert.alert("Error", "Failed to load user data");
+    } finally {
+      isLoadingRef.current = false;
     }
   };
 
@@ -105,7 +129,11 @@ export default function CreateDaPaintScreen() {
   useFocusEffect(
     useCallback(() => {
       setShowAd(shouldShowAd);
-      loadData();
+      
+      // Only load data if not currently loading to prevent infinite loops
+      if (!isLoadingRef.current) {
+        loadData();
+      }
       
       // When screen comes into focus and AdScreen is showing, try to resume if needed
       if (showAd && pauseVideoRef.current) {
@@ -118,7 +146,7 @@ export default function CreateDaPaintScreen() {
           pauseVideoRef.current();
         }
       };
-    }, [showAd, shouldShowAd])
+    }, [shouldShowAd])
   );
 
   const handleLeaveDaPaint = async () => {
@@ -183,7 +211,11 @@ export default function CreateDaPaintScreen() {
         Alert.alert('Success', message, [{ text: 'OK' }]);
       }
       
-      await loadData();
+      if (!isLoadingRef.current) {
+        await loadData().catch(error => {
+          logger.error('Error reloading data after leaving DaPaint:', error);
+        });
+      }
     } catch (error: any) {
       const errorMsg = error.message || 'Failed to leave DaPaint';
       if (Platform.OS === 'web') {
@@ -207,7 +239,7 @@ export default function CreateDaPaintScreen() {
     if (shouldShowAd) {
       router.replace('/(tabs)/active');
     }
-  }, [router, shouldShowAd]);
+  }, [shouldShowAd]);
   
   // Function to set the pauseVideo function from AdScreen
   const setPauseVideoFunction = useCallback((pauseFunction: (() => void) | null) => {
@@ -244,7 +276,15 @@ export default function CreateDaPaintScreen() {
       );
     }
 
-    return <CreateForm userData={userData} onCreated={loadData} />;
+    return <CreateForm userData={userData} onCreated={async () => {
+      if (!isLoadingRef.current) {
+        try {
+          await loadData();
+        } catch (error) {
+          logger.error('Error reloading data after creating DaPaint:', error);
+        }
+      }
+    }} />;
   };
 
   return (
@@ -258,6 +298,9 @@ export default function CreateDaPaintScreen() {
           {renderContent()}
         </KeyboardAvoidingView>
       </Pressable>
+      
+      {/* Feedback Button */}
+      <FeedbackButton visible={true} />
     </SafeAreaView>
   );
 }

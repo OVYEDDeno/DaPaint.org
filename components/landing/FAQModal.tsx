@@ -121,11 +121,18 @@ const styles = StyleSheet.create({
     alignSelf: 'center',
     borderWidth: 1,
     borderColor: 'rgba(0,92,130,0.18)',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.18,
-    shadowRadius: 14,
-    elevation: 6,
+    ...Platform.select({
+      web: {
+        boxShadow: '0px 6px 14px rgba(0,0,0,0.18)',
+      },
+      default: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 6 },
+        shadowOpacity: 0.18,
+        shadowRadius: 14,
+        elevation: 6,
+      },
+    }),
   },
   header: {
     flexDirection: 'row',

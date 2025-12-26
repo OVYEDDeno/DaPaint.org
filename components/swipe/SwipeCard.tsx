@@ -1,13 +1,14 @@
-// components/swipe/SwipeCard.tsx - uses host profile pic (users.image_url)
+// components/swipe/SwipeCard.tsx - uses host profile pic (users.image_path)
 import { View, Text, StyleSheet, Image, Dimensions, Platform, ImageSourcePropType } from "react-native";
 import { BlurView } from "expo-blur";
+import { LinearGradient } from "expo-linear-gradient";
 import type { DaPaint } from "../../lib/api/dapaints";
 import { theme } from "../../constants/theme";
 import { getProfilePicUrl } from "../../lib/profilePics";
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get("window");
 // Fill most of the viewport but leave room for the action bar and tab bar.
-const ACTION_BAR_ALLOWANCE = 110; // tighter allowance to keep the card tall
+const ACTION_BAR_ALLOWANCE = Platform.OS === "web" ? 90 : 110; // allow a taller card on web
 const CARD_HEIGHT = Math.max(SCREEN_HEIGHT - ACTION_BAR_ALLOWANCE, SCREEN_HEIGHT * 0.85);
 
 // Preload the fallback image to avoid loading delays
@@ -31,10 +32,16 @@ export default function SwipeCard({ dapaint }: { dapaint: DaPaint }) {
       <Image 
         source={bgSource} 
         style={styles.backgroundImage} 
-        resizeMode="contain" 
+        resizeMode="cover" 
         // Optimize image loading
         defaultSource={FALLBACK_IMAGE}
         onError={() => console.log(`Failed to load image for ${dapaint.host_display_name}`)}
+      />
+      <LinearGradient
+        {...(Platform.OS === "web" ? {} : ({ pointerEvents: "none" } as const))}
+        colors={["rgba(0,0,0,0.60)", "rgba(0,0,0,0.12)", "rgba(0,0,0,0.72)"]}
+        locations={[0, 0.5, 1]}
+        style={[StyleSheet.absoluteFillObject, Platform.OS === "web" ? ({ pointerEvents: "none" } as any) : null]}
       />
 
       <View style={styles.topCluster}>
@@ -103,7 +110,7 @@ const styles = StyleSheet.create({
     gap: theme.space.xs,
   },
   hostBadge: {
-    backgroundColor: theme.colors.surfaceStrong,
+    backgroundColor: "rgba(0,0,0,0.42)",
     paddingHorizontal: theme.space.sm,
     paddingVertical: theme.space.xs,
     borderRadius: theme.radius.full,
@@ -111,18 +118,38 @@ const styles = StyleSheet.create({
   },
   hostText: {
     ...theme.type.labelMedium,
-    color: theme.colors.textPrimary,
+    color: "#FFFFFF",
     textAlign: "center",
   },
   title: {
     ...theme.type.displayLarge,
-    color: theme.colors.textPrimary,
+    color: "#FFFFFF",
     textAlign: "center",
+    ...Platform.select({
+      web: {
+        textShadow: "0px 2px 10px rgba(0,0,0,0.55)",
+      },
+      default: {
+        textShadowColor: "rgba(0,0,0,0.55)",
+        textShadowOffset: { width: 0, height: 2 },
+        textShadowRadius: 10,
+      },
+    }),
   },
   subTitle: {
     ...theme.type.bodyMedium,
-    color: theme.colors.textSecondary,
+    color: "rgba(255,255,255,0.92)",
     textAlign: "center",
+    ...Platform.select({
+      web: {
+        textShadow: "0px 1px 8px rgba(0,0,0,0.45)",
+      },
+      default: {
+        textShadowColor: "rgba(0,0,0,0.45)",
+        textShadowOffset: { width: 0, height: 1 },
+        textShadowRadius: 8,
+      },
+    }),
   },
   priceBadge: {
     position: "absolute",
@@ -146,9 +173,9 @@ const styles = StyleSheet.create({
   },
   pills: { gap: theme.space.xs },
   pill: {
-    backgroundColor: theme.colors.surfaceStrong,
+    backgroundColor: "rgba(0,0,0,0.38)",
     borderWidth: 1,
-    borderColor: theme.colors.border,
+    borderColor: "rgba(255,255,255,0.18)",
     paddingHorizontal: theme.space.sm,
     paddingVertical: theme.space.xs,
     borderRadius: theme.radius.full,
@@ -157,6 +184,6 @@ const styles = StyleSheet.create({
   },
   pillText: {
     ...theme.type.bodyMedium,
-    color: theme.colors.textSecondary,
+    color: "rgba(255,255,255,0.92)",
   },
 });

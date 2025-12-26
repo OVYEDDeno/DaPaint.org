@@ -15,12 +15,12 @@ export async function attachUserImagesToDaPaints<T extends { host_id: string; fo
 
   const { data: users, error } = await supabase
     .from("users")
-    .select("id") // image_url column is not available; default to null for now
+    .select("id, image_path")
     .in("id", ids);
 
   if (error) throw error;
 
-  const map = new Map(users?.map((u) => [u.id, null]) ?? []);
+  const map = new Map(users?.map((u) => [u.id, u.image_path ?? null]) ?? []);
 
   return dapaints.map((d) => ({
     ...d,

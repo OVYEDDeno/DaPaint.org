@@ -1,9 +1,11 @@
 import React from "react";
-import { View, Image, StyleSheet } from "react-native";
+import { View, Image, StyleSheet, Platform } from "react-native";
 
 export const ImageBackground = () => {
+  const nativePointerEventsProps = Platform.OS === "web" ? {} : ({ pointerEvents: "none" } as const);
+  const webPointerEvents = Platform.OS === "web" ? ({ pointerEvents: "none" } as any) : null;
   return (
-    <View style={StyleSheet.absoluteFill} pointerEvents="none">
+    <View style={[StyleSheet.absoluteFill, webPointerEvents]} {...nativePointerEventsProps}>
       <Image
         source={require("../../assets/DaPaintbg.jpeg")}
         style={StyleSheet.absoluteFillObject}

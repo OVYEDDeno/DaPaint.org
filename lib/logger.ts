@@ -15,6 +15,45 @@ export enum LogLevel {
 // Current log level (can be adjusted based on environment)
 const CURRENT_LOG_LEVEL = isDevelopment ? LogLevel.DEBUG : LogLevel.ERROR;
 
+const getCircularReplacer = () => {
+  const seen = new WeakSet();
+  return (_key: string, value: any) => {
+    if (value instanceof Error) {
+      return { name: value.name, message: value.message, stack: value.stack };
+    }
+    if (typeof value === "object" && value !== null) {
+      if (seen.has(value)) return "[Circular]";
+      seen.add(value);
+    }
+    return value;
+  };
+};
+
+function safeStringify(value: any): string {
+  try {
+    const str = JSON.stringify(value, getCircularReplacer());
+    return str ?? String(value);
+  } catch {
+    try {
+      return String(value);
+    } catch {
+      return "[Unstringifiable]";
+    }
+  }
+}
+
+function formatParam(param: any): string {
+  if (param instanceof Error) {
+    const stack = param.stack ? `\n${param.stack}` : "";
+    return `${param.name}: ${param.message}${stack}`.trim();
+  }
+  if (typeof param === "string") return param;
+  if (typeof param === "number" || typeof param === "boolean" || typeof param === "bigint") return String(param);
+  if (param === null) return "null";
+  if (typeof param === "undefined") return "undefined";
+  return safeStringify(param);
+}
+
 /**
  * Generic logger function
  * @param level - The log level
@@ -25,19 +64,20 @@ function log(level: LogLevel, message: string, ...optionalParams: any[]) {
   // Only log if the current level allows it
   if (level >= CURRENT_LOG_LEVEL) {
     const timestamp = new Date().toISOString();
+    const formattedParams = optionalParams.map(formatParam);
     
     switch (level) {
       case LogLevel.DEBUG:
-        console.debug(`[DEBUG][${timestamp}] ${message}`, ...optionalParams);
+        console.debug(`[DEBUG][${timestamp}] ${message}`, ...formattedParams);
         break;
       case LogLevel.INFO:
-        console.info(`[INFO][${timestamp}] ${message}`, ...optionalParams);
+        console.info(`[INFO][${timestamp}] ${message}`, ...formattedParams);
         break;
       case LogLevel.WARN:
-        console.warn(`[WARN][${timestamp}] ${message}`, ...optionalParams);
+        console.warn(`[WARN][${timestamp}] ${message}`, ...formattedParams);
         break;
       case LogLevel.ERROR:
-        console.error(`[ERROR][${timestamp}] ${message}`, ...optionalParams);
+        console.error(`[ERROR][${timestamp}] ${message}`, ...formattedParams);
         
         // Capture error in Sentry for production monitoring
         if (!isDevelopment) {
@@ -45,6 +85,7 @@ function log(level: LogLevel, message: string, ...optionalParams: any[]) {
           if (optionalParams.length > 0) {
             // Add extra data to Sentry if available
             Sentry.setExtra('extra_data', optionalParams);
+            Sentry.setExtra('extra_data_formatted', formattedParams);
           }
         }
         break;

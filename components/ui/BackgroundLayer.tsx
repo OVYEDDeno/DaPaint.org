@@ -1,5 +1,5 @@
 import React from "react";
-import { View, StyleSheet, Image } from "react-native";
+import { View, StyleSheet, Image, Platform } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 
 interface BackgroundLayerProps {
@@ -7,8 +7,13 @@ interface BackgroundLayerProps {
 }
 
 export default function BackgroundLayer({ zIndex = -1 }: BackgroundLayerProps) {
+  const webPointerEvents = Platform.OS === "web" ? ({ pointerEvents: "none" } as any) : null;
+  const nativePointerEventsProps = Platform.OS === "web" ? {} : ({ pointerEvents: "none" } as const);
   return (
-    <View style={[styles.container, { zIndex }]} pointerEvents="none">  
+    <View
+      style={[styles.container, { zIndex }, webPointerEvents]}
+      {...nativePointerEventsProps}
+    >
       <Image
         source={require("../../assets/DaPaintbg.jpeg")}
         style={styles.image}
