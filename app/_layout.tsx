@@ -1,14 +1,15 @@
 // app/_layout.tsx
+import * as Sentry from '@sentry/react-native';
 import { Redirect, Stack, useSegments } from 'expo-router';
+import Head from 'expo-router/head';
 import { useEffect, useState } from 'react';
 import { View, StyleSheet, Platform } from 'react-native';
-import { supabase } from '../lib/supabase';
-import { getSession, signOut } from '../lib/api/auth';
-import logger from '../lib/logger';
+
 import BackgroundLayer from '../components/ui/BackgroundLayer';
-import Head from 'expo-router/head';
-import * as Sentry from '@sentry/react-native';
+import { getSession, signOut } from '../lib/api/auth';
 import { reportError } from '../lib/api/dapaints';
+import logger from '../lib/logger';
+import { supabase } from '../lib/supabase';
 
 const sentryIntegrations =
   Platform.OS === 'web'
@@ -19,10 +20,10 @@ const sentryIntegrations =
           // Additional SDK configuration goes in here, for example:
           styles: {
             submitButton: {
-              backgroundColor: "#6a1b9a",
+              backgroundColor: '#6a1b9a',
             },
           },
-          namePlaceholder: "Fullname",
+          namePlaceholder: 'Fullname',
           isNameRequired: true,
           isEmailRequired: true,
         }),
@@ -58,24 +59,33 @@ function RootLayout() {
 
     // Web-specific: Load theme.css (only when it actually resolves to CSS to avoid MIME errors in dev).
     const loadThemeCss = async () => {
-      if (Platform.OS !== "web") return;
+      if (Platform.OS !== 'web') return;
 
       try {
-        const existing = document.querySelector('link[rel="stylesheet"][href="/theme.css"]');
+        const existing = document.querySelector(
+          'link[rel="stylesheet"][href="/theme.css"]'
+        );
         if (existing) return;
 
-        const isCss = (contentType: string | null) => (contentType || "").toLowerCase().includes("text/css");
+        const isCss = (contentType: string | null) =>
+          (contentType || '').toLowerCase().includes('text/css');
 
-        const headRes = await fetch("/theme.css", { method: "HEAD", cache: "no-store" });
-        if (!headRes.ok || !isCss(headRes.headers.get("content-type"))) {
-          const getRes = await fetch("/theme.css", { method: "GET", cache: "no-store" });
-          if (!getRes.ok || !isCss(getRes.headers.get("content-type"))) return;
+        const headRes = await fetch('/theme.css', {
+          method: 'HEAD',
+          cache: 'no-store',
+        });
+        if (!headRes.ok || !isCss(headRes.headers.get('content-type'))) {
+          const getRes = await fetch('/theme.css', {
+            method: 'GET',
+            cache: 'no-store',
+          });
+          if (!getRes.ok || !isCss(getRes.headers.get('content-type'))) return;
         }
 
         if (cancelled) return;
-        themeLink = document.createElement("link");
-        themeLink.rel = "stylesheet";
-        themeLink.href = "/theme.css";
+        themeLink = document.createElement('link');
+        themeLink.rel = 'stylesheet';
+        themeLink.href = '/theme.css';
         document.head.appendChild(themeLink);
       } catch {
         // If anything goes wrong, skip injecting theme.css on web.
@@ -88,7 +98,7 @@ function RootLayout() {
     const checkSession = async () => {
       try {
         const session = await getSession();
-        
+
         setIsLoggedIn(!!session);
         logger.debug('Session check complete. Logged in:', !!session);
       } catch (error) {
@@ -108,7 +118,9 @@ function RootLayout() {
     checkSession();
 
     // Listen for auth state changes
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((_event, session) => {
       logger.debug('Auth state changed:', _event);
       setIsLoggedIn(!!session);
     });
@@ -144,8 +156,14 @@ function RootLayout() {
       {Platform.OS === 'web' && (
         <Head>
           <title>DaPaint.org - Compete. Win. Get Paid.</title>
-          <meta name="description" content="Create and join competitive challenges. Win streaks earn real money." />
-          <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
+          <meta
+            name="description"
+            content="Create and join competitive challenges. Win streaks earn real money."
+          />
+          <meta
+            name="viewport"
+            content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no"
+          />
           <meta property="og:title" content="DaPaint.org" />
           <meta property="og:description" content="Compete. Win. Get Paid." />
           <meta property="og:type" content="website" />
@@ -168,7 +186,8 @@ function RootLayout() {
 
 // Sentry's `wrap()` currently includes `FeedbackWidgetProvider` even on web, which can crash in RN-web.
 // Keep Sentry enabled, but only wrap the root component on native platforms.
-const WrappedRootLayout = Platform.OS === 'web' ? RootLayout : Sentry.wrap(RootLayout);
+const WrappedRootLayout =
+  Platform.OS === 'web' ? RootLayout : Sentry.wrap(RootLayout);
 
 export default WrappedRootLayout;
 
@@ -178,28 +197,23 @@ export function GlobalErrorHandler() {
     // Capture unhandled promise rejections
     const handleUnhandledRejection = (event: PromiseRejectionEvent) => {
       console.error('Unhandled promise rejection:', event.reason);
-      reportError(
-        event.reason,
-        'Unhandled Promise Rejection',
-        'high'
-      );
+      reportError(event.reason, 'Unhandled Promise Rejection', 'high');
     };
 
     // Capture global errors
     const handleError = (event: ErrorEvent) => {
       console.error('Global error:', event.error);
-      reportError(
-        event.error,
-        'Global Error: ' + event.message,
-        'high'
-      );
+      reportError(event.error, 'Global Error: ' + event.message, 'high');
     };
 
     window.addEventListener('unhandledrejection', handleUnhandledRejection);
     window.addEventListener('error', handleError);
 
     return () => {
-      window.removeEventListener('unhandledrejection', handleUnhandledRejection);
+      window.removeEventListener(
+        'unhandledrejection',
+        handleUnhandledRejection
+      );
       window.removeEventListener('error', handleError);
     };
   }, []);
