@@ -189,7 +189,7 @@ function RootLayout() {
     return <Redirect href="/(tabs)/feed" />;
   }
 
-  // Also redirect from index to feed if already logged in (landing page check)
+  // Also redirect from index to feed if already logged in
   // useSegments returns [] for the root index.tsx
   if (isLoggedIn && segments.length === 0) {
     return <Redirect href="/(tabs)/feed" />;

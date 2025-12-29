@@ -24,6 +24,7 @@ import { supabase } from '../../lib/supabase';
 
 import ChatModal from './ChatModal';
 import EditDaPaintModal from './EditDaPaintModal';
+import WinLossScreen from './WinLossScreen';
 
 type ActiveDaPaintProps = {
   dapaint: DaPaint;
@@ -64,6 +65,8 @@ export default function ActiveDaPaint({
 
   const [showEditModal, setShowEditModal] = useState(false);
   const [showChatModal, setShowChatModal] = useState(false);
+  const [showCelebration, setShowCelebration] = useState(false);
+  const [didWin, setDidWin] = useState(false);
   const insets = useSafeAreaInsets();
 
   const chatInsertChannel = useRef<any>(null);
@@ -362,6 +365,8 @@ export default function ActiveDaPaint({
           [{ text: 'OK', onPress: () => loadSubmissions() }]
         );
 
+        setDidWin(claimedWon);
+        setShowCelebration(true);
         setProofUrl('');
       } catch (error: any) {
         logger.error('Error submitting result:', error);
@@ -449,6 +454,19 @@ export default function ActiveDaPaint({
       Alert.alert('Error', 'Could not open link.');
     }
   }, []);
+
+  if (showCelebration) {
+    return (
+      <WinLossScreen
+        dapaint={dapaint}
+        isWinner={didWin}
+        onContinue={() => {
+          setShowCelebration(false);
+          loadSubmissions();
+        }}
+      />
+    );
+  }
 
   return (
     <View style={styles.screen}>
@@ -538,42 +556,42 @@ export default function ActiveDaPaint({
             <Text style={styles.detailValue}>
               {hasStarted
                 ? (() => {
-                    // Calculate time remaining for submissions (24 hours after start)
-                    const startTime = new Date(dapaint.starts_at).getTime();
-                    const submissionDeadline = startTime + 24 * 60 * 60 * 1000; // 24 hours in milliseconds
-                    const timeLeftMs = submissionDeadline - now.getTime();
+                  // Calculate time remaining for submissions (24 hours after start)
+                  const startTime = new Date(dapaint.starts_at).getTime();
+                  const submissionDeadline = startTime + 24 * 60 * 60 * 1000; // 24 hours in milliseconds
+                  const timeLeftMs = submissionDeadline - now.getTime();
 
-                    if (timeLeftMs <= 0) {
-                      return 'Submission deadline passed';
-                    }
+                  if (timeLeftMs <= 0) {
+                    return 'Submission deadline passed';
+                  }
 
-                    const totalHours = timeLeftMs / (1000 * 60 * 60);
-                    const days = Math.floor(totalHours / 24);
-                    const hours = Math.floor(totalHours % 24);
-                    const minutes = Math.floor((totalHours * 60) % 60);
+                  const totalHours = timeLeftMs / (1000 * 60 * 60);
+                  const days = Math.floor(totalHours / 24);
+                  const hours = Math.floor(totalHours % 24);
+                  const minutes = Math.floor((totalHours * 60) % 60);
 
-                    if (days > 0) {
-                      return `${days}d ${hours}h left to submit`;
-                    } else if (totalHours >= 1) {
-                      return `${hours}h ${minutes}m left to submit`;
-                    } else {
-                      return `${Math.floor(totalHours * 60)}m left to submit`;
-                    }
-                  })()
+                  if (days > 0) {
+                    return `${days}d ${hours}h left to submit`;
+                  } else if (totalHours >= 1) {
+                    return `${hours}h ${minutes}m left to submit`;
+                  } else {
+                    return `${Math.floor(totalHours * 60)}m left to submit`;
+                  }
+                })()
                 : (() => {
-                    const totalHours = Math.max(0, hoursUntilStart);
-                    const days = Math.floor(totalHours / 24);
-                    const hours = Math.floor(totalHours % 24);
-                    const minutes = Math.floor((totalHours * 60) % 60);
+                  const totalHours = Math.max(0, hoursUntilStart);
+                  const days = Math.floor(totalHours / 24);
+                  const hours = Math.floor(totalHours % 24);
+                  const minutes = Math.floor((totalHours * 60) % 60);
 
-                    if (days > 0) {
-                      return `${days}d ${hours}h left`;
-                    } else if (totalHours >= 1) {
-                      return `${hours}h ${minutes}m left`;
-                    } else {
-                      return `${Math.floor(totalHours * 60)}m left`;
-                    }
-                  })()}
+                  if (days > 0) {
+                    return `${days}d ${hours}h left`;
+                  } else if (totalHours >= 1) {
+                    return `${hours}h ${minutes}m left`;
+                  } else {
+                    return `${Math.floor(totalHours * 60)}m left`;
+                  }
+                })()}
             </Text>
           </View>
 

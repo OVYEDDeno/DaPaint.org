@@ -1,12 +1,12 @@
 // constants/DaPaintDesign.ts
-// Landing-aligned light palette and shared design tokens
+// Auth-aligned light palette and shared design tokens
 import { Platform } from 'react-native';
 
 export const DaPaintColors = {
   // Brand Core
   primary: '#2EC4FF',
   primaryDark: '#0A84FF',
-  primaryDeep: '#005C82', // anchor blue from landing
+  primaryDeep: '#005C82', // anchor blue from auth
   gold: '#FFD166',
   ember: '#FF4D6D',
   aurora: '#7C5CFF',
@@ -17,7 +17,7 @@ export const DaPaintColors = {
   error: '#FF453A',
   info: '#2EC4FF',
 
-  // Background + Surfaces (light over landing art)
+  // Background + Surfaces (light over auth art)
   bg0: 'rgba(255,255,255,0.98)',
   bg1: 'rgba(255,255,255,0.95)',
   bg2: 'rgba(255,255,255,0.92)',

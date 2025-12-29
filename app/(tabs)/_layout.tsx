@@ -102,7 +102,7 @@ export default function TabsLayout() {
     };
   }, [checkActiveDaPaint]);
 
-  // Redirect to landing on sign out
+  // Redirect to auth on sign out
   useEffect(() => {
     const { data: authListener } = supabase.auth.onAuthStateChange(event => {
       if (event === 'SIGNED_OUT') {

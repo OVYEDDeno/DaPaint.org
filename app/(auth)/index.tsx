@@ -42,6 +42,6 @@ export default function AuthIndex() {
     return <Redirect href="/(tabs)/feed" />;
   }
 
-  // If not logged in, redirect to landing/login page
+  // If not logged in, redirect to login page
   return <Redirect href="/" />;
 }
