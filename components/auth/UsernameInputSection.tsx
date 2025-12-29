@@ -96,7 +96,7 @@ export const UsernameInputSection: React.FC<UsernameInputSectionProps> = ({
   // Interpolate scale and color for smooth animation
   const scale = pulseAnim.interpolate({
     inputRange: [0, 1],
-    outputRange: [1, 1.08],
+    outputRange: [1, 1.05],
   });
 
   const color = pulseAnim.interpolate({
@@ -203,7 +203,8 @@ const styles = StyleSheet.create({
     left: DaPaintSpacing.xxs,
     position: 'absolute',
     right: DaPaintSpacing.xxs,
-    ...DaPaintTypography.bodyLarge,
+    ...DaPaintTypography.labelMedium,
+    fontSize: 14,
     color: DaPaintColors.textTertiary,
     pointerEvents: 'none',
   },

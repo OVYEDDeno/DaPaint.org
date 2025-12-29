@@ -174,7 +174,11 @@ function RootLayout() {
 
   // Don't render anything until we've checked the session
   if (!sessionChecked) {
-    return null;
+    return (
+      <View style={styles.root}>
+        <BackgroundLayer />
+      </View>
+    );
   }
 
   // Protect all routes inside (tabs) when not authenticated
@@ -189,9 +193,11 @@ function RootLayout() {
     return <Redirect href="/(tabs)/feed" />;
   }
 
-  // Also redirect from index to feed if already logged in
+  // Also redirect from index to feed if already logged in (landing page check)
   // useSegments returns [] for the root index.tsx
-  if (isLoggedIn && segments.length === 0) {
+  // We check for length === 0 or if the first segment is index (landing)
+  const isAtRoot = segments.length === 0 || segments[0] === 'index';
+  if (isLoggedIn && isAtRoot) {
     return <Redirect href="/(tabs)/feed" />;
   }
 
@@ -217,7 +223,10 @@ function RootLayout() {
       )}
       <View style={styles.root}>
         <BackgroundLayer />
-        <Stack screenOptions={{ headerShown: false }}>
+        <Stack
+          screenOptions={{ headerShown: false }}
+          initialRouteName={isLoggedIn ? '(tabs)' : 'index'}
+        >
           <Stack.Screen name="index" />
           <Stack.Screen name="(auth)" />
           <Stack.Screen name="(tabs)" />
