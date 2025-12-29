@@ -319,7 +319,7 @@ export default function EditDaPaintModal({
                   // Native date picker
                   <>
                     <Pressable onPress={() => setShowDatePicker(true)}>
-                      <View style={styles.input} pointerEvents="none">
+                      <View style={[styles.input, { pointerEvents: 'none' }]}>
                         <Text style={styles.inputText}>{formatDate(formData.date)}</Text>
                       </View>
                     </Pressable>
@@ -372,7 +372,7 @@ export default function EditDaPaintModal({
                   // Native time picker
                   <>
                     <Pressable onPress={() => setShowTimePicker(true)}>
-                      <View style={styles.input} pointerEvents="none">
+                      <View style={[styles.input, { pointerEvents: 'none' }]}>
                         <Text style={styles.inputText}>{formatTime(formData.time)}</Text>
                       </View>
                     </Pressable>

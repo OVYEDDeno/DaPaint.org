@@ -1,6 +1,6 @@
-// app/_layout.tsx
+// app/_layout.tsx - Fixed with better error handling
 import * as Sentry from '@sentry/react-native';
-import { Redirect, Stack, useSegments } from 'expo-router';
+import { Redirect, Stack, useSegments, useRouter } from 'expo-router';
 import Head from 'expo-router/head';
 import { useEffect, useState } from 'react';
 import { View, StyleSheet, Platform } from 'react-native';
@@ -17,7 +17,6 @@ const sentryIntegrations =
     : [
         Sentry.mobileReplayIntegration(),
         Sentry.feedbackIntegration({
-          // Additional SDK configuration goes in here, for example:
           styles: {
             submitButton: {
               backgroundColor: '#6a1b9a',
@@ -31,33 +30,24 @@ const sentryIntegrations =
 
 Sentry.init({
   dsn: 'https://f0a7bbf487722943592ee9615fc87981@o4510594012807168.ingest.us.sentry.io/4510594012938240',
-
-  // Adds more context data to events (IP address, cookies, user, etc.)
-  // For more information, visit: https://docs.sentry.io/platforms/react-native/data-management/data-collected/
   sendDefaultPii: true,
-
-  // Enable Logs
   enableLogs: true,
-
-  // Configure Session Replay
   replaysSessionSampleRate: 0.1,
   replaysOnErrorSampleRate: 1,
   integrations: sentryIntegrations,
-
-  // uncomment the line below to enable Spotlight (https://spotlightjs.com)
-  // spotlight: __DEV__,
 });
 
 function RootLayout() {
   const [sessionChecked, setSessionChecked] = useState(false);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const segments = useSegments();
+  const router = useRouter();
 
   useEffect(() => {
     let cancelled = false;
     let themeLink: HTMLLinkElement | null = null;
 
-    // Web-specific: Load theme.css (only when it actually resolves to CSS to avoid MIME errors in dev).
+    // Web-specific: Load theme.css
     const loadThemeCss = async () => {
       if (Platform.OS !== 'web') return;
 
@@ -88,7 +78,7 @@ function RootLayout() {
         themeLink.href = '/theme.css';
         document.head.appendChild(themeLink);
       } catch {
-        // If anything goes wrong, skip injecting theme.css on web.
+        // Skip if theme.css fails to load
       }
     };
 
@@ -99,7 +89,37 @@ function RootLayout() {
       try {
         const session = await getSession();
 
-        setIsLoggedIn(!!session);
+        if (session) {
+          // Verify the user actually exists in the database
+          try {
+            const { data: user, error: userError } = await supabase
+              .from('users')
+              .select('id')
+              .eq('id', session.user.id)
+              .single();
+
+            if (userError || !user) {
+              // User doesn't exist in database - invalid session
+              logger.warn('Session exists but user not in database, clearing session');
+              await signOut();
+              setIsLoggedIn(false);
+            } else {
+              setIsLoggedIn(true);
+            }
+          } catch (verifyError) {
+            // Error verifying user - clear session to be safe
+            logger.error('Error verifying user:', verifyError);
+            try {
+              await signOut();
+            } catch (signOutError) {
+              logger.error('Error signing out:', signOutError);
+            }
+            setIsLoggedIn(false);
+          }
+        } else {
+          setIsLoggedIn(false);
+        }
+
         logger.debug('Session check complete. Logged in:', !!session);
       } catch (error) {
         logger.error('Unexpected error checking session:', error);
@@ -120,9 +140,32 @@ function RootLayout() {
     // Listen for auth state changes
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, session) => {
+    } = supabase.auth.onAuthStateChange(async (_event, session) => {
       logger.debug('Auth state changed:', _event);
-      setIsLoggedIn(!!session);
+      
+      if (session) {
+        // Verify user exists before setting logged in
+        try {
+          const { data: user, error: userError } = await supabase
+            .from('users')
+            .select('id')
+            .eq('id', session.user.id)
+            .single();
+
+          if (userError || !user) {
+            logger.warn('Auth changed but user not in database');
+            await signOut();
+            setIsLoggedIn(false);
+          } else {
+            setIsLoggedIn(true);
+          }
+        } catch (verifyError) {
+          logger.error('Error verifying user on auth change:', verifyError);
+          setIsLoggedIn(false);
+        }
+      } else {
+        setIsLoggedIn(false);
+      }
     });
 
     return () => {
@@ -137,8 +180,7 @@ function RootLayout() {
     return null;
   }
 
-  // Protect all routes inside (tabs) when not authenticated.
-  // expo-router still registers all routes; hiding Stack.Screens is not access control.
+  // Protect all routes inside (tabs) when not authenticated
   const inTabsGroup = segments.includes('(tabs)');
   const inAuthGroup = segments.includes('(auth)');
 
@@ -194,28 +236,33 @@ export default WrappedRootLayout;
 // Add this component to your root layout
 export function GlobalErrorHandler() {
   useEffect(() => {
-    // Capture unhandled promise rejections
-    const handleUnhandledRejection = (event: PromiseRejectionEvent) => {
-      console.error('Unhandled promise rejection:', event.reason);
-      reportError(event.reason, 'Unhandled Promise Rejection', 'high');
-    };
+    // Only add window event listeners on web platform
+    if (Platform.OS === 'web') {
+      // Capture unhandled promise rejections
+      const handleUnhandledRejection = (event: PromiseRejectionEvent) => {
+        console.error('Unhandled promise rejection:', event.reason);
+        reportError(event.reason, 'Unhandled Promise Rejection', 'high');
+      };
 
-    // Capture global errors
-    const handleError = (event: ErrorEvent) => {
-      console.error('Global error:', event.error);
-      reportError(event.error, 'Global Error: ' + event.message, 'high');
-    };
+      // Capture global errors
+      const handleError = (event: ErrorEvent) => {
+        console.error('Global error:', event.error);
+        reportError(event.error, 'Global Error: ' + event.message, 'high');
+      };
 
-    window.addEventListener('unhandledrejection', handleUnhandledRejection);
-    window.addEventListener('error', handleError);
+      window.addEventListener('unhandledrejection', handleUnhandledRejection);
+      window.addEventListener('error', handleError);
 
-    return () => {
-      window.removeEventListener(
-        'unhandledrejection',
-        handleUnhandledRejection
-      );
-      window.removeEventListener('error', handleError);
-    };
+      return () => {
+        window.removeEventListener(
+          'unhandledrejection',
+          handleUnhandledRejection
+        );
+        window.removeEventListener('error', handleError);
+      };
+    }
+    // For native platforms, React Native handles errors differently
+    // and we rely on Sentry for error reporting
   }, []);
 
   return null;

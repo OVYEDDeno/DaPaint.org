@@ -1002,7 +1002,7 @@ async function updateWinstreaks(
       // Get current winstreaks
       const { data: winnerData } = await supabase
         .from("users")
-        .select("current_winstreak, longest_winstreak")
+        .select("current_winstreak, highest_winstreak")
         .eq("id", winnerId)
         .single();
 
@@ -1010,14 +1010,14 @@ async function updateWinstreaks(
       const newWinnerStreak = (winnerData?.current_winstreak || 0) + 1;
       const newWinnerLongest = Math.max(
         newWinnerStreak,
-        winnerData?.longest_winstreak || 0
+        winnerData?.highest_winstreak || 0
       );
 
       await supabase
         .from("users")
         .update({
           current_winstreak: newWinnerStreak,
-          longest_winstreak: newWinnerLongest,
+          highest_winstreak: newWinnerLongest,
         })
         .eq("id", winnerId);
 

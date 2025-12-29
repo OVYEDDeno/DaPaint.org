@@ -1,4 +1,4 @@
-// lib/api/auth.ts - IMPROVED with proper error handling and debugging
+// lib/api/auth.ts - Fixed with username parameter
 import { supabase } from '../supabase';
 import logger from '../logger';
 
@@ -10,23 +10,57 @@ export type AuthError = {
 
 /**
  * Sign up a new user
- * Creates auth user AND database user entry
+ * Creates ONLY the auth user - database profile must be created separately
+ * This is called from the signup form which collects all required data first
  */
 export async function signUp(
   email: string,
   password: string,
-  displayName: string
+  username: string  // Username for auth metadata only
 ): Promise<{ success: boolean; error?: AuthError; userId?: string }> {
   try {
-    logger.debug('Starting signup:', { email, displayName });
+    const normalizedEmail = email.toLowerCase().trim();
+    const normalizedUsername = username.toLowerCase().trim();
+    
+    logger.debug('Starting signup:', { email: normalizedEmail, username: normalizedUsername });
 
-    // Step 1: Create auth user
+    // Validate username format (must match DB constraint: lowercase alphanumeric only)
+    if (!/^[a-z0-9]+$/.test(normalizedUsername)) {
+      return {
+        success: false,
+        error: {
+          message: 'Username can only contain lowercase letters and numbers',
+          code: 'INVALID_USERNAME'
+        }
+      };
+    }
+
+    // Check if username already exists BEFORE creating auth user
+    const { data: existingUsername } = await supabase
+      .from('users')
+      .select('username')
+      .eq('username', normalizedUsername)
+      .single();
+
+    if (existingUsername) {
+      return {
+        success: false,
+        error: {
+          message: 'This username is already taken',
+          code: 'USERNAME_EXISTS'
+        }
+      };
+    }
+
+    // Create auth user with username in metadata
+    // NOTE: Database user profile will be created by signup.tsx after collecting all required fields
     const { data: authData, error: authError } = await supabase.auth.signUp({
-      email: email.toLowerCase().trim(),
+      email: normalizedEmail,
       password,
       options: {
         data: {
-          display_name: displayName.trim()
+          username: normalizedUsername,
+          display_name: normalizedUsername
         }
       }
     });
@@ -53,52 +87,21 @@ export async function signUp(
       };
     }
 
-    logger.debug('Auth user created:', authData.user.id);
-
-    // Step 2: Create database user entry
-    // Note: This might be handled by a database trigger
-    // But we'll check and create if needed
-    const { data: existingUser } = await supabase
-      .from('users')
-      .select('id')
-      .eq('id', authData.user.id)
-      .single();
-
-    if (!existingUser) {
-      logger.debug('Creating database user entry...');
-      
-      const { error: dbError } = await supabase
-        .from('users')
-        .insert({
-          id: authData.user.id,
-          email: email.toLowerCase().trim(),
-          display_name: displayName.trim(),
-          current_winstreak: 0,
-          longest_winstreak: 0,
-          created_at: new Date().toISOString()
-        });
-
-      if (dbError) {
-        logger.error('Database user creation error:', dbError);
-        
-        // User was created in auth but not in database
-        // This is a critical error
-        return {
-          success: false,
-          error: {
-            message: 'Failed to create user profile',
-            details: dbError.message,
-            code: dbError.code
-          }
-        };
-      }
+    // Check if we have a session (should be auto-created by signUp)
+    if (!authData.session) {
+      logger.warn('No session returned from signUp - user may need to verify email');
+    } else {
+      logger.debug('Session created with auth user:', authData.session.user.id);
     }
 
-    logger.debug('Signup complete:', authData.user.id);
+    const userId = authData.user.id;
+    logger.debug('Auth user created:', userId);
 
+    // Return success - signup.tsx will handle creating the database profile
+    // with all required fields including zipcode
     return {
       success: true,
-      userId: authData.user.id
+      userId: userId
     };
 
   } catch (error: any) {
@@ -162,39 +165,23 @@ export async function signIn(
     // Verify user exists in database
     const { data: dbUser, error: dbError } = await supabase
       .from('users')
-      .select('id, display_name, current_winstreak')
+      .select('id, username, display_name, current_winstreak')
       .eq('id', data.user.id)
       .single();
 
     if (dbError || !dbUser) {
-      logger.error('Database user not found:', dbError);
+      logger.error('Database user not found for auth user:', dbError);
       
-      // User exists in auth but not in database
-      // Try to create database entry
-      const { error: createError } = await supabase
-        .from('users')
-        .insert({
-          id: data.user.id,
-          email: email.toLowerCase().trim(),
-          display_name: data.user.user_metadata?.display_name || 'User',
-          current_winstreak: 0,
-          longest_winstreak: 0,
-          created_at: new Date().toISOString()
-        });
-
-      if (createError) {
-        logger.error('Failed to create missing user:', createError);
-        return {
-          success: false,
-          error: {
-            message: 'User profile not found',
-            details: 'Please contact support to fix your account',
-            code: 'MISSING_PROFILE'
-          }
-        };
-      }
-      
-      logger.debug('Created missing user profile');
+      // This is a ghost user - they exist in auth but not in database
+      // We should NOT auto-create them, as we don't have their username
+      return {
+        success: false,
+        error: {
+          message: 'User profile not found',
+          details: 'Please contact support to fix your account',
+          code: 'MISSING_PROFILE'
+        }
+      };
     }
 
     logger.debug('Signin complete:', data.user.id);

@@ -4,9 +4,9 @@ import BackgroundLayer from '../ui/BackgroundLayer';
 import { LogoSection } from './LogoSection';
 import { HeroTextSection } from './HeroTextSection';
 import { TermsSection } from './TermsSection';
-import { AuthFormSection } from './AuthFormSection';
-import { HeroImageSection } from './HeroImageSection';
-import { FAQModal } from './FAQModal';
+import { AuthFormSection } from '../auth/AuthSection';
+import { HeroImageSection } from '../auth/HeroImageSection';
+import { FAQModal } from '../auth/FAQModal';
 
 const totalBottomSectionHeight = 400; // Define the constant
 
@@ -53,14 +53,14 @@ export const LandingPage = () => {
           <HeroTextSection 
             onShowFAQ={() => setShowFAQModal(true)}
           />
-        </View>
-
-        {/* Fixed Bottom Section */}
-        <View style={[styles.absolute, styles.bottomSection]}>
-          {/* Terms Section - Moved above Auth Form */}
+        </View>{/* Terms Section - Moved above Auth Form */}
           <View style={[styles.section, styles.termsSection]}>
             <TermsSection />
           </View>
+
+        {/* Fixed Bottom Section */}
+        <View style={[styles.absolute, styles.bottomSection]}>
+          
           
           {/* Authentication Form Section - SINGLE INSTANCE */}
           {/* Pass keyboardHeight to AuthFormSection so it can pass to UsernameForm */}

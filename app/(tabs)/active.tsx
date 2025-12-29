@@ -25,11 +25,12 @@ import FeedbackButton from "../../components/ui/FeedbackButton";
 
 export default function CreateDaPaintScreen() {
   const router = useRouter();
-  const { fromCreate, fromMatch, fromEdit } = useLocalSearchParams<{
-    fromCreate?: string;
-    fromMatch?: string;
-    fromEdit?: string;
-  }>();
+  const params = useLocalSearchParams();
+  const { fromCreate, fromMatch, fromEdit } = {
+    fromCreate: params.fromCreate as string || '',
+    fromMatch: params.fromMatch as string || '',
+    fromEdit: params.fromEdit as string || '',
+  };
   const [_loading, setLoading] = useState(true);
   const [activeDaPaint, setActiveDaPaint] = useState<DaPaint | null>(null);
   const shouldShowAd =

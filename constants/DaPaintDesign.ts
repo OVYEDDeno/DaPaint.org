@@ -92,18 +92,70 @@ export const DaPaintShadows = {
   small: Platform.select({
     ios: { shadowColor: "#000", shadowOpacity: 0.18, shadowRadius: 8, shadowOffset: { width: 0, height: 3 } },
     android: { elevation: 2 },
+    web: { boxShadow: "0px 3px 10px rgba(0,0,0,0.22)" },
     default: { boxShadow: "0px 3px 10px rgba(0,0,0,0.22)" },
   }),
   medium: Platform.select({
     ios: { shadowColor: "#000", shadowOpacity: 0.24, shadowRadius: 14, shadowOffset: { width: 0, height: 6 } },
     android: { elevation: 4 },
+    web: { boxShadow: "0px 8px 22px rgba(0,0,0,0.28)" },
     default: { boxShadow: "0px 8px 22px rgba(0,0,0,0.28)" },
   }),
   glowPrimary: Platform.select({
-    ios: { shadowColor: DaPaintColors.primary, shadowOpacity: 0.25, shadowRadius: 18, shadowOffset: { width: 0, height: 6 } },
+    ios: { shadowColor: DaPaintColors.primary, shadowOpacity: 0.35, shadowRadius: 20, shadowOffset: { width: 0, height: 8 } },
     android: { elevation: 6 },
-    default: { boxShadow: `0px 10px 28px rgba(46,196,255,0.25)` },
+    web: { boxShadow: `0px 10px 28px rgba(46,196,255,0.35)` },
+    default: { boxShadow: `0px 10px 28px rgba(46,196,255,0.35)` },
   }),
+  glowSuccess: Platform.select({
+    ios: { shadowColor: DaPaintColors.success, shadowOpacity: 0.3, shadowRadius: 16, shadowOffset: { width: 0, height: 6 } },
+    android: { elevation: 5 },
+    web: { boxShadow: `0px 8px 24px rgba(52,199,89,0.3)` },
+    default: { boxShadow: `0px 8px 24px rgba(52,199,89,0.3)` },
+  }),
+  glowError: Platform.select({
+    ios: { shadowColor: DaPaintColors.error, shadowOpacity: 0.3, shadowRadius: 16, shadowOffset: { width: 0, height: 6 } },
+    android: { elevation: 5 },
+    web: { boxShadow: `0px 8px 24px rgba(255,69,58,0.3)` },
+    default: { boxShadow: `0px 8px 24px rgba(255,69,58,0.3)` },
+  }),
+};
+
+// Apple-style spring physics
+export const DaPaintPhysics = {
+  // Standard spring - smooth and confident
+  spring: {
+    mass: 1,
+    damping: 20,        // Critical damping for smooth stop
+    stiffness: 300,     // Snappy but not jarring
+  },
+  // Gentle spring - elegant transitions
+  springGentle: {
+    mass: 1,
+    damping: 26,        // Overdamped for smooth glide
+    stiffness: 200,
+  },
+  // Bouncy spring - playful interactions
+  springBouncy: {
+    mass: 1,
+    damping: 12,        // Underdamped for subtle bounce
+    stiffness: 400,
+  },
+  // Button press scale (Apple standard)
+  pressScale: 0.97,
+  // Timing for non-spring animations
+  timing: {
+    quick: 160,
+    normal: 240,
+    slow: 360,
+  },
+  // Easing curves (for CSS/Reanimated)
+  easing: {
+    // Apple's custom bezier curves
+    standard: [0.4, 0.0, 0.2, 1.0],
+    decelerate: [0.0, 0.0, 0.2, 1.0],
+    accelerate: [0.4, 0.0, 1.0, 1.0],
+  }
 };
 
 export const DaPaintAnimations = {
@@ -119,6 +171,17 @@ export const DaPaintButtons = {
     background: "rgba(0,92,130,0.10)",
     border: "rgba(0,92,130,0.30)",
     text: DaPaintColors.primaryDeep,
+  },
+  primary: {
+    background: DaPaintColors.primaryDeep,
+    text: "#ffffff",
+    shadow: DaPaintShadows.medium,
+  },
+  secondary: {
+    background: "rgba(0,92,130,0.12)",
+    border: "rgba(0,92,130,0.25)",
+    text: DaPaintColors.primaryDeep,
+    shadow: DaPaintShadows.small,
   },
 };
 

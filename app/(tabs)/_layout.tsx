@@ -149,48 +149,48 @@ export default function TabsLayout() {
       <Tabs.Screen name="index" options={{ href: null }} />
       <Tabs.Screen
         name="feed"
-        options={{
+        options={() => ({
           title: 'Feed',
-          tabBarIcon: ({ }) => (
-            <Image
-              source={require('../../assets/logo.png')}
-              style={styles.logoIcon}
-              resizeMode="contain"
-            />
+          tabBarIcon: ({ focused }) => (
+            <View style={focused ? [styles.iconContainer, styles.iconContainerActive] : styles.iconContainer}>
+              <Image
+                source={require('../../assets/logo.png')}
+                style={focused ? [styles.logoIcon, styles.iconActive] : styles.logoIcon}
+                resizeMode="contain"
+              />
+            </View>
           ),
-        }}
+        })}
       />
       <Tabs.Screen
         name="active"
-        options={{
+        options={() => ({
           title: 'Active',
-          tabBarIcon: ({ }) => (
-            <Text
-                style={[
-                  styles.iconText,
-                  styles.iconTextInactive,
-                ]}
-              >
-                🔥
+          tabBarIcon: ({ focused }) => (
+            <View style={focused ? [styles.iconContainer, styles.iconContainerActive] : styles.iconContainer}>
+              <Text
+                  style={focused ? [styles.iconText, styles.iconTextActive] : [styles.iconText, styles.iconTextInactive]}
+                >
+                  🔥
               </Text>
+            </View>
           ),
-        }}
+        })}
       />
       <Tabs.Screen
         name="profile"
-        options={{
+        options={() => ({
           title: 'Profile',
-          tabBarIcon: ({ }) => (
-            <Text
-                style={[
-                  styles.iconText,
-                  styles.iconTextInactive,
-                ]}
-              >
-                👤
+          tabBarIcon: ({ focused }) => (
+            <View style={focused ? [styles.iconContainer, styles.iconContainerActive] : styles.iconContainer}>
+              <Text
+                  style={focused ? [styles.iconText, styles.iconTextActive] : [styles.iconText, styles.iconTextInactive]}
+                >
+                  👤
               </Text>
+            </View>
           ),
-        }}
+        })}
       />
 
     </Tabs>
@@ -202,65 +202,89 @@ const styles = StyleSheet.create({
     position: 'absolute',
     left: 0,
     right: 0,
-    bottom: 0,
+    bottom: 16,
     backgroundColor: 'transparent',
     borderTopColor: 'transparent',
     borderTopWidth: 0,
     height: 60,
-    paddingBottom: 5,
+    paddingBottom: 8,
     paddingTop: 0,
-    paddingHorizontal: 8,
-    borderRadius: 0,
+    paddingHorizontal: 16,
+    borderRadius: 28,
     alignSelf: 'center',
+    width: '90%',
+    maxWidth: 500,
     overflow: 'hidden',
     ...Platform.select({
       ios: {
         shadowColor: '#000',
-        shadowOpacity: 0.12,
-        shadowRadius: 18,
-        shadowOffset: { width: 0, height: -8 },
+        shadowOpacity: 0.15,
+        shadowRadius: 20,
+        shadowOffset: { width: 0, height: 8 },
       },
       android: {
-        elevation: 10,
+        elevation: 15,
+      },
+      web: {
+        boxShadow: '0px 8px 20px rgba(0,0,0,0.15)',
       },
       default: {
-        boxShadow: '0px -8px 18px rgba(0,0,0,0.12)',
+        shadowColor: '#000',
+        shadowOpacity: 0.15,
+        shadowRadius: 20,
+        shadowOffset: { width: 0, height: 8 },
+        elevation: 15,
       },
     }),
   },
   tabBarBackdropNative: {
     flex: 1,
-    backgroundColor: 'rgba(255,255,255,0.22)',
+    backgroundColor: 'rgba(255,255,255,0.75)',
+    borderRadius: 28,
   },
   tabBarBackdropWeb: ({
     flex: 1,
-    backgroundColor: 'rgba(255,255,255,0.32)',
-    backdropFilter: 'blur(18px)',
-    WebkitBackdropFilter: 'blur(18px)',
+    backgroundColor: 'rgba(255,255,255,0.85)',
+    backdropFilter: 'blur(20px)',
+    WebkitBackdropFilter: 'blur(20px)',
+    borderRadius: 28,
   } as any),
   tabBarHidden: {
     display: 'none',
   },
   tabItem: {
-    paddingVertical: 0,
-    marginTop: -8,
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderRadius: 20,
+    marginHorizontal: 4,
   },
   tabLabel: {
-    fontSize: 14,
-    fontWeight: '700',
+    fontSize: 12,
+    fontWeight: '600',
+    marginTop: 4,
   },
   iconText: {
-    fontSize: 20,
+    fontSize: 22,
     fontWeight: '700',
   },
   iconTextActive: {
     color: palette.ink,
   },
   iconTextInactive: {
-    color: palette.ink,
+    color: palette.inkSoft,
   },
   logoIcon: {
-    width: 24,
-    height: 24,
+    width: 26,
+    height: 26,
+  },
+  iconContainer: {
+    padding: 6,
+    borderRadius: 16,
+  },
+  iconContainerActive: {
+    backgroundColor: palette.inkSoft,
+  },
+  iconActive: {
+    transform: [{ scale: 1.1 }],
   },
 });

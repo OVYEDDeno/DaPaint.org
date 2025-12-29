@@ -1,6 +1,6 @@
 import React from 'react';
 import { View, Text, StyleSheet, Pressable, Platform } from 'react-native';
-import { SocialProofSection } from './SocialProofSection';
+
 
 interface HeroTextSectionProps {
   animation?: any;
@@ -18,7 +18,7 @@ export const HeroTextSection: React.FC<HeroTextSectionProps> = ({
     <View
       style={[styles.container, enterStyle, exitStyle]}
     >
-      <SocialProofSection />
+     
 
       <Text style={styles.mainTitle}>
         The Fast Way to Earn $1,000,000

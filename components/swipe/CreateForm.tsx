@@ -500,7 +500,7 @@ export default function CreateForm({ userData, onCreated }: CreateFormProps) {
               ) : (
                 <>
                   <Pressable onPress={() => setShowDatePicker(true)}>
-                    <View style={styles.input} pointerEvents="none">
+                    <View style={[styles.input, { pointerEvents: 'none' }]}>
                       <Text style={styles.inputText}>{formatDate(formData.date)}</Text>
                     </View>
                   </Pressable>
@@ -555,7 +555,7 @@ export default function CreateForm({ userData, onCreated }: CreateFormProps) {
               ) : (
                 <>
                   <Pressable onPress={() => setShowTimePicker(true)}>
-                    <View style={styles.input} pointerEvents="none">
+                    <View style={[styles.input, { pointerEvents: 'none' }]}>
                       <Text style={styles.inputText}>{formatTime(formData.time)}</Text>
                     </View>
                   </Pressable>
@@ -826,11 +826,27 @@ const styles = StyleSheet.create({
   typeCardActive: {
     borderColor: theme.colors.primaryDeep,
     backgroundColor: 'rgba(0, 92, 130, 0.12)',
-    shadowColor: theme.colors.primaryDeep,
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.18,
-    shadowRadius: 10,
-    elevation: 3,
+    ...Platform.select({
+      ios: {
+        shadowColor: theme.colors.primaryDeep,
+        shadowOffset: { width: 0, height: 6 },
+        shadowOpacity: 0.18,
+        shadowRadius: 10,
+      },
+      android: {
+        elevation: 3,
+      },
+      web: {
+        boxShadow: '0px 6px 10px rgba(0,92,130,0.18)',
+      },
+      default: {
+        shadowColor: theme.colors.primaryDeep,
+        shadowOffset: { width: 0, height: 6 },
+        shadowOpacity: 0.18,
+        shadowRadius: 10,
+        elevation: 3,
+      },
+    }),
   },
   typeIcon: {
     fontSize: 32,

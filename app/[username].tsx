@@ -5,7 +5,7 @@ import { supabase } from '../lib/supabase';
 import { getProfilePicUrl } from '../lib/profilePics';
 import { useRouter, useLocalSearchParams, useFocusEffect } from 'expo-router';
 import BackgroundLayer from '../components/ui/BackgroundLayer';
-import AuthSection from '../components/landing/AuthSection';
+import AuthSection from '../components/auth/AuthSection';
 import { DaPaintButtons, DaPaintColors, DaPaintRadius, DaPaintShadows, DaPaintSpacing, DaPaintTypography } from '../constants/DaPaintDesign';
 
 const PUBLIC_PROFILE_CACHE_TTL_MS = 5 * 60 * 1000;
@@ -26,7 +26,10 @@ const setCachedPublicProfile = (username: string, data: any) => {
 
 export default function PublicProfileScreen() {
   const router = useRouter();
-  const { username } = useLocalSearchParams<{ username: string }>();
+  const params = useLocalSearchParams();
+  const { username } = {
+    username: params.username as string || '',
+  };
   const [userData, setUserData] = useState<any>(null);
   const [hasAttemptedLoad, setHasAttemptedLoad] = useState(false);
   const [avatarError, setAvatarError] = useState(false);

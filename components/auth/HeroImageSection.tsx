@@ -18,7 +18,7 @@ export const HeroImageSection: React.FC<HeroImageSectionProps> = ({
       style={[styles.container, enterStyle, exitStyle]}
     >
       <Image
-        source={require('../../assets/DaPaintbghero.png')}
+        source={require('../../assets/DaPainthero.png')}
         style={styles.image}
         resizeMode="contain"
       />

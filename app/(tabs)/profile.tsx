@@ -12,7 +12,7 @@ import BackgroundLayer from '../../components/ui/BackgroundLayer';
 import { DaPaintButtons, DaPaintColors, DaPaintRadius, DaPaintShadows, DaPaintSpacing, DaPaintTypography } from '../../constants/DaPaintDesign';
 import { decode } from 'base64-arraybuffer';
 import { getKeyboardDismissHandler } from '../../lib/webFocusGuard';
-import AuthSection from '../../components/landing/AuthSection';
+import AuthSection from '../../components/auth/AuthSection';
 import FeedbackButton from '../../components/ui/FeedbackButton';
 
 export default function ProfileScreen() {
@@ -1232,11 +1232,3 @@ const styles = StyleSheet.create({
     ...DaPaintTypography.bodyMedium,
   },
 });
-
-
-
-
-
-
-
-
