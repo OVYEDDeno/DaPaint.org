@@ -5,33 +5,29 @@ import { useRouter, useFocusEffect } from 'expo-router';
 import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
-  Text,
-  StyleSheet,
-  Image,
   ScrollView,
-  Pressable,
-  Platform,
+  StyleSheet,
   Alert,
-  Modal,
-  TextInput,
-  Switch,
-  KeyboardAvoidingView,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import AuthSection from '../../components/auth/AuthSection';
 import BackgroundLayer from '../../components/ui/BackgroundLayer';
 import FeedbackButton from '../../components/ui/FeedbackButton';
+import ProfileHeader from '../../components/profile/ProfileHeader';
+import ProfileActions from '../../components/profile/ProfileActions';
+import ProfileStats from '../../components/profile/ProfileStats';
+import ProfileSettings from '../../components/profile/ProfileSettings';
+import EditProfileModal from '../../components/profile/modals/EditProfileModal';
+import AccountSettingsModal from '../../components/profile/modals/AccountSettingsModal';
+import NotificationsModal from '../../components/profile/modals/NotificationsModal';
+import SupportModal from '../../components/profile/modals/SupportModal';
+
 import {
-  DaPaintButtons,
   DaPaintColors,
-  DaPaintRadius,
-  DaPaintShadows,
   DaPaintSpacing,
-  DaPaintTypography,
 } from '../../constants/DaPaintDesign';
 import { signOut, getSession } from '../../lib/api/auth';
-import { getProfilePicUrl } from '../../lib/profilePics';
 import { supabase } from '../../lib/supabase';
 import { userDataManager } from '../../lib/UserDataManager';
 import { getKeyboardDismissHandler } from '../../lib/webFocusGuard';
@@ -188,24 +184,6 @@ export default function ProfileScreen() {
     setNotificationSettings(data);
   };
 
-  const userStats = [
-    { label: 'Subscribers', value: subscriberCount.toString() },
-    { label: 'Win Streak', value: userData?.current_winstreak || '0' },
-    { label: 'Highest Win Streak', value: userData?.highest_winstreak || '0' },
-    { label: 'Wins', value: userData?.wins || '0' },
-    { label: 'Losses', value: userData?.losses || '0' },
-    {
-      label: 'Win Rate',
-      value:
-        userData?.wins !== undefined &&
-        userData?.losses !== undefined &&
-        userData.wins + userData.losses > 0
-          ? `${Math.round((userData.wins / (userData.wins + userData.losses)) * 100)}%`
-          : '0%',
-    },
-    { label: 'Disqualifications', value: userData?.disqualifications || '0' },
-  ];
-
   const handleUploadPicture = async () => {
     try {
       // Request permission to access media library
@@ -306,7 +284,7 @@ export default function ProfileScreen() {
       return;
     }
 
-    router.replace('/');
+    router.push('/');
   };
 
   const prepareImageForUpload = async (uri: string): Promise<ArrayBuffer> => {
@@ -571,13 +549,6 @@ export default function ProfileScreen() {
     );
   }
 
-  const FALLBACK_AVATAR = require('../../assets/logo.png');
-
-  // Get avatar URI with cache busting enabled
-  const avatarUri = userData?.image_path
-    ? getProfilePicUrl(userData.image_path, true)
-    : null;
-
   return (
     <SafeAreaView style={styles.container}>
       <BackgroundLayer />
@@ -588,828 +559,118 @@ export default function ProfileScreen() {
           showsVerticalScrollIndicator={false}
           bounces={false}
         >
-          {/* Profile Header */}
-          <View style={styles.headerContainer}>
-            <View style={styles.avatarContainer}>
-              <Image
-                key={`avatar-${refreshTrigger}`}
-                source={
-                  !avatarUri || avatarError
-                    ? FALLBACK_AVATAR
-                    : { uri: avatarUri }
-                }
-                style={styles.avatar}
-                resizeMode="cover"
-                onError={() => setAvatarError(true)}
-              />
-              <Pressable
-                style={styles.changePictureButton}
-                onPress={handleUploadPicture}
-              >
-                <Text style={styles.changePictureText}>+</Text>
-              </Pressable>
-            </View>
+          <ProfileHeader
+            userData={userData}
+            subscriberCount={subscriberCount}
+            avatarError={avatarError}
+            setAvatarError={setAvatarError}
+            refreshTrigger={refreshTrigger}
+            onUploadPicture={handleUploadPicture}
+          />
 
-            <View style={styles.userInfoContainer}>
-              <Text style={styles.displayName}>
-                {userData?.display_name || 'User'}
-              </Text>
-              <Text style={styles.username}>
-                @{userData?.username || 'username'}
-              </Text>
-              {(userData?.city || userData?.zipcode) && (
-                <Text style={styles.location}>
-                  {[userData?.city, userData?.zipcode]
-                    .filter(Boolean)
-                    .join(' - ')}
-                </Text>
-              )}
-              <Text style={styles.subscriberCount}>
-                {subscriberCount} subscribers
-              </Text>
-            </View>
-          </View>
+          <ProfileActions
+            onEditPress={() => setEditModalVisible(true)}
+            onAccountPress={() => setSettingsModalVisible(true)}
+            onNotificationsPress={() => setNotificationsVisible(true)}
+            onPublicProfilePress={goToPublicProfile}
+          />
 
-          <View style={styles.actionRow}>
-            <Pressable
-              style={styles.actionButton}
-              onPress={() => setEditModalVisible(true)}
-            >
-              <Text style={styles.actionButtonText}>Edit Profile</Text>
-            </Pressable>
-            <Pressable
-              style={styles.actionButton}
-              onPress={() => setSettingsModalVisible(true)}
-            >
-              <Text style={styles.actionButtonText}>Account</Text>
-            </Pressable>
-            <Pressable
-              style={styles.actionButton}
-              onPress={() => setNotificationsVisible(true)}
-            >
-              <Text style={styles.actionButtonText}>Notifications</Text>
-            </Pressable>
-            <Pressable style={styles.actionButton} onPress={goToPublicProfile}>
-              <Text style={styles.actionButtonText}>Public Profile</Text>
-            </Pressable>
-          </View>
+          <ProfileStats
+            userData={userData}
+            subscriberCount={subscriberCount}
+          />
 
-          {/* Stats Section */}
-          <View style={styles.statsSection}>
-            <Text style={styles.sectionTitle}>Stats</Text>
-            <View style={styles.statsGrid}>
-              {userStats.map((stat, index) => (
-                <View key={index} style={styles.statCard}>
-                  <Text style={styles.statValue}>{stat.value}</Text>
-                  <Text style={styles.statLabel}>{stat.label}</Text>
-                </View>
-              ))}
-            </View>
-          </View>
-
-          {/* Settings */}
-          <View style={styles.settingsContainer}>
-            <Pressable
-              style={styles.settingButton}
-              onPress={() => setSupportVisible(true)}
-            >
-              <Text style={styles.settingButtonText}>Help & Support</Text>
-            </Pressable>
-            <Pressable
-              style={styles.settingButton}
-              onPress={() => setFeedbackVisible(true)}
-            >
-              <Text style={styles.settingButtonText}>Feedback</Text>
-            </Pressable>
-            <Pressable
-              style={styles.settingButton}
-              onPress={() => setPrivacyVisible(true)}
-            >
-              <Text style={styles.settingButtonText}>Privacy</Text>
-            </Pressable>
-            <Pressable
-              style={[styles.settingButton, styles.settingButtonLast]}
-              onPress={handleLogout}
-            >
-              <Text style={styles.settingButtonText}>Log Out</Text>
-            </Pressable>
-          </View>
+          <ProfileSettings
+            onSupportPress={() => setSupportVisible(true)}
+            onFeedbackPress={() => setFeedbackVisible(true)}
+            onPrivacyPress={() => setPrivacyVisible(true)}
+            onLogoutPress={handleLogout}
+          />
         </ScrollView>
 
-        <Modal
+        <EditProfileModal
           visible={editModalVisible}
-          animationType="slide"
-          presentationStyle="pageSheet"
-          onRequestClose={() => setEditModalVisible(false)}
-        >
-          <Pressable
-            onPress={dismissKeyboard}
-            accessible={false}
-            style={styles.sheetTouchGuard}
-          >
-            <KeyboardAvoidingView
-              style={styles.sheetContainer}
-              behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-            >
-              <View style={styles.sheetHeader}>
-                <Text style={styles.sheetTitle}>Edit Profile</Text>
-                <Pressable onPress={() => setEditModalVisible(false)}>
-                  <Text style={styles.sheetClose}>X</Text>
-                </Pressable>
-              </View>
-              <ScrollView
-                style={styles.sheetContent}
-                contentContainerStyle={styles.sheetScrollContent}
-                showsVerticalScrollIndicator={false}
-              >
-                <Text style={styles.sheetLabel}>Display Name</Text>
-                <TextInput
-                  style={styles.sheetInput}
-                  value={editForm.display_name}
-                  onChangeText={text => updateEditField('display_name', text)}
-                  placeholder="Display name"
-                  placeholderTextColor={DaPaintColors.textTertiary}
-                />
+          onClose={() => setEditModalVisible(false)}
+          editForm={editForm}
+          onUpdateField={updateEditField}
+          onSave={handleSaveProfile}
+          saving={saving}
+          dismissKeyboard={dismissKeyboard}
+        />
 
-                <Text style={styles.sheetLabel}>Username</Text>
-                <TextInput
-                  style={styles.sheetInput}
-                  value={editForm.username}
-                  onChangeText={text =>
-                    updateEditField('username', text.toLowerCase())
-                  }
-                  placeholder="username"
-                  autoCapitalize="none"
-                  placeholderTextColor={DaPaintColors.textTertiary}
-                />
-
-                <Text style={styles.sheetLabel}>Phone</Text>
-                <TextInput
-                  style={styles.sheetInput}
-                  value={editForm.phone}
-                  onChangeText={text => updateEditField('phone', text)}
-                  placeholder="(123) 456-7890"
-                  keyboardType="phone-pad"
-                  placeholderTextColor={DaPaintColors.textTertiary}
-                />
-
-                <Text style={styles.sheetLabel}>Birthday (YYYY-MM-DD)</Text>
-                <TextInput
-                  style={styles.sheetInput}
-                  value={editForm.birthday}
-                  onChangeText={text => updateEditField('birthday', text)}
-                  placeholder="2000-01-01"
-                  placeholderTextColor={DaPaintColors.textTertiary}
-                />
-
-                <Text style={styles.sheetLabel}>City</Text>
-                <TextInput
-                  style={styles.sheetInput}
-                  value={editForm.city}
-                  onChangeText={text => updateEditField('city', text)}
-                  placeholder="City"
-                  placeholderTextColor={DaPaintColors.textTertiary}
-                />
-
-                <Text style={styles.sheetLabel}>Zip Code</Text>
-                <TextInput
-                  style={styles.sheetInput}
-                  value={editForm.zipcode}
-                  onChangeText={text => updateEditField('zipcode', text)}
-                  placeholder="Zip code"
-                  autoCapitalize="characters"
-                  placeholderTextColor={DaPaintColors.textTertiary}
-                />
-              </ScrollView>
-              <View style={styles.sheetFooter}>
-                <Pressable
-                  style={styles.sheetSecondaryButton}
-                  onPress={() => setEditModalVisible(false)}
-                >
-                  <Text style={styles.sheetSecondaryText}>Cancel</Text>
-                </Pressable>
-                <Pressable
-                  style={styles.sheetPrimaryButton}
-                  onPress={handleSaveProfile}
-                  disabled={saving}
-                >
-                  <Text style={styles.sheetPrimaryText}>
-                    {saving ? 'Saving...' : 'Save'}
-                  </Text>
-                </Pressable>
-              </View>
-            </KeyboardAvoidingView>
-          </Pressable>
-        </Modal>
-
-        <Modal
+        <AccountSettingsModal
           visible={settingsModalVisible}
-          animationType="slide"
-          presentationStyle="pageSheet"
-          onRequestClose={() => setSettingsModalVisible(false)}
-        >
-          <Pressable
-            onPress={dismissKeyboard}
-            accessible={false}
-            style={styles.sheetTouchGuard}
-          >
-            <KeyboardAvoidingView
-              style={styles.sheetContainer}
-              behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-            >
-              <View style={styles.sheetHeader}>
-                <Text style={styles.sheetTitle}>Account Settings</Text>
-                <Pressable onPress={() => setSettingsModalVisible(false)}>
-                  <Text style={styles.sheetClose}>X</Text>
-                </Pressable>
-              </View>
-              <ScrollView
-                style={styles.sheetContent}
-                contentContainerStyle={styles.sheetScrollContent}
-                showsVerticalScrollIndicator={false}
-              >
-                <Text style={styles.sheetLabel}>Email</Text>
-                <TextInput
-                  style={styles.sheetInput}
-                  value={accountForm.email}
-                  onChangeText={text => updateAccountField('email', text)}
-                  placeholder="you@email.com"
-                  keyboardType="email-address"
-                  autoCapitalize="none"
-                  placeholderTextColor={DaPaintColors.textTertiary}
-                />
+          onClose={() => setSettingsModalVisible(false)}
+          accountForm={accountForm}
+          onUpdateField={updateAccountField}
+          onSave={handleSaveAccount}
+          onDeleteAccount={handleDeleteAccount}
+          saving={saving}
+          dismissKeyboard={dismissKeyboard}
+        />
 
-                <Text style={styles.sheetLabel}>New Password</Text>
-                <TextInput
-                  style={styles.sheetInput}
-                  value={accountForm.newPassword}
-                  onChangeText={text => updateAccountField('newPassword', text)}
-                  placeholder="New password"
-                  secureTextEntry
-                  placeholderTextColor={DaPaintColors.textTertiary}
-                />
-
-                <Text style={styles.sheetLabel}>Confirm Password</Text>
-                <TextInput
-                  style={styles.sheetInput}
-                  value={accountForm.confirmPassword}
-                  onChangeText={text =>
-                    updateAccountField('confirmPassword', text)
-                  }
-                  placeholder="Confirm password"
-                  secureTextEntry
-                  placeholderTextColor={DaPaintColors.textTertiary}
-                />
-
-                <Pressable
-                  style={styles.sheetDangerButton}
-                  onPress={handleDeleteAccount}
-                >
-                  <Text style={styles.sheetDangerText}>Delete Account</Text>
-                </Pressable>
-              </ScrollView>
-              <View style={styles.sheetFooter}>
-                <Pressable
-                  style={styles.sheetSecondaryButton}
-                  onPress={() => setSettingsModalVisible(false)}
-                >
-                  <Text style={styles.sheetSecondaryText}>Cancel</Text>
-                </Pressable>
-                <Pressable
-                  style={styles.sheetPrimaryButton}
-                  onPress={handleSaveAccount}
-                  disabled={saving}
-                >
-                  <Text style={styles.sheetPrimaryText}>
-                    {saving ? 'Saving...' : 'Save'}
-                  </Text>
-                </Pressable>
-              </View>
-            </KeyboardAvoidingView>
-          </Pressable>
-        </Modal>
-
-        <Modal
+        <NotificationsModal
           visible={notificationsVisible}
-          animationType="slide"
-          presentationStyle="pageSheet"
-          onRequestClose={() => setNotificationsVisible(false)}
-        >
-          <View style={styles.sheetContainer}>
-            <View style={styles.sheetHeader}>
-              <Text style={styles.sheetTitle}>Notifications</Text>
-              <Pressable onPress={() => setNotificationsVisible(false)}>
-                <Text style={styles.sheetClose}>X</Text>
-              </Pressable>
-            </View>
-            <ScrollView
-              style={styles.sheetContent}
-              contentContainerStyle={styles.sheetScrollContent}
-            >
-              <View style={styles.toggleRow}>
-                <Text style={styles.toggleLabel}>New Followers</Text>
-                <Switch
-                  value={notificationSettings?.new_follower ?? true}
-                  onValueChange={value =>
-                    handleToggleNotification('new_follower', value)
-                  }
-                />
-              </View>
-              <View style={styles.toggleRow}>
-                <Text style={styles.toggleLabel}>DaPaint Invites</Text>
-                <Switch
-                  value={notificationSettings?.dapaint_invite ?? true}
-                  onValueChange={value =>
-                    handleToggleNotification('dapaint_invite', value)
-                  }
-                />
-              </View>
-              <View style={styles.toggleRow}>
-                <Text style={styles.toggleLabel}>DaPaint Joined</Text>
-                <Switch
-                  value={notificationSettings?.dapaint_joined ?? true}
-                  onValueChange={value =>
-                    handleToggleNotification('dapaint_joined', value)
-                  }
-                />
-              </View>
-              <View style={styles.toggleRow}>
-                <Text style={styles.toggleLabel}>DaPaint Starting</Text>
-                <Switch
-                  value={notificationSettings?.dapaint_starting ?? true}
-                  onValueChange={value =>
-                    handleToggleNotification('dapaint_starting', value)
-                  }
-                />
-              </View>
-              <View style={styles.toggleRow}>
-                <Text style={styles.toggleLabel}>DaPaint Results</Text>
-                <Switch
-                  value={notificationSettings?.dapaint_result ?? true}
-                  onValueChange={value =>
-                    handleToggleNotification('dapaint_result', value)
-                  }
-                />
-              </View>
-              <View style={styles.toggleRow}>
-                <Text style={styles.toggleLabel}>Messages</Text>
-                <Switch
-                  value={notificationSettings?.messages ?? true}
-                  onValueChange={value =>
-                    handleToggleNotification('messages', value)
-                  }
-                />
-              </View>
-            </ScrollView>
-            <View style={styles.sheetFooter}>
-              <Pressable
-                style={styles.sheetPrimaryButton}
-                onPress={() => setNotificationsVisible(false)}
-              >
-                <Text style={styles.sheetPrimaryText}>Done</Text>
-              </Pressable>
-            </View>
-          </View>
-        </Modal>
+          onClose={() => setNotificationsVisible(false)}
+          notificationSettings={notificationSettings}
+          onToggleNotification={handleToggleNotification}
+        />
 
-        <Modal
+        <SupportModal
           visible={supportVisible}
-          animationType="slide"
-          presentationStyle="pageSheet"
-          onRequestClose={() => setSupportVisible(false)}
-        >
-          <Pressable
-            onPress={dismissKeyboard}
-            accessible={false}
-            style={styles.sheetTouchGuard}
-          >
-            <KeyboardAvoidingView
-              style={styles.sheetContainer}
-              behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-            >
-              <View style={styles.sheetHeader}>
-                <Text style={styles.sheetTitle}>Help & Support</Text>
-                <Pressable onPress={() => setSupportVisible(false)}>
-                  <Text style={styles.sheetClose}>X</Text>
-                </Pressable>
-              </View>
-              <ScrollView
-                style={styles.sheetContent}
-                contentContainerStyle={styles.sheetScrollContent}
-              >
-                <TextInput
-                  style={[styles.sheetInput, styles.sheetTextArea]}
-                  value={supportMessage}
-                  onChangeText={setSupportMessage}
-                  placeholder="How can we help?"
-                  multiline
-                  placeholderTextColor={DaPaintColors.textTertiary}
-                />
-              </ScrollView>
-              <View style={styles.sheetFooter}>
-                <Pressable
-                  style={styles.sheetSecondaryButton}
-                  onPress={() => setSupportVisible(false)}
-                >
-                  <Text style={styles.sheetSecondaryText}>Cancel</Text>
-                </Pressable>
-                <Pressable
-                  style={styles.sheetPrimaryButton}
-                  onPress={submitSupport}
-                >
-                  <Text style={styles.sheetPrimaryText}>Send</Text>
-                </Pressable>
-              </View>
-            </KeyboardAvoidingView>
-          </Pressable>
-        </Modal>
+          onClose={() => setSupportVisible(false)}
+          message={supportMessage}
+          onUpdateMessage={setSupportMessage}
+          onSubmit={submitSupport}
+          dismissKeyboard={dismissKeyboard}
+          title="Help & Support"
+          placeholder="How can we help?"
+        />
 
-        <Modal
+        <SupportModal
           visible={feedbackVisible}
-          animationType="slide"
-          presentationStyle="pageSheet"
-          onRequestClose={() => setFeedbackVisible(false)}
-        >
-          <Pressable
-            onPress={dismissKeyboard}
-            accessible={false}
-            style={styles.sheetTouchGuard}
-          >
-            <KeyboardAvoidingView
-              style={styles.sheetContainer}
-              behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-            >
-              <View style={styles.sheetHeader}>
-                <Text style={styles.sheetTitle}>Feedback</Text>
-                <Pressable onPress={() => setFeedbackVisible(false)}>
-                  <Text style={styles.sheetClose}>X</Text>
-                </Pressable>
-              </View>
-              <ScrollView
-                style={styles.sheetContent}
-                contentContainerStyle={styles.sheetScrollContent}
-              >
-                <TextInput
-                  style={[styles.sheetInput, styles.sheetTextArea]}
-                  value={feedbackMessage}
-                  onChangeText={setFeedbackMessage}
-                  placeholder="Share your thoughts"
-                  multiline
-                  placeholderTextColor={DaPaintColors.textTertiary}
-                />
-              </ScrollView>
-              <View style={styles.sheetFooter}>
-                <Pressable
-                  style={styles.sheetSecondaryButton}
-                  onPress={() => setFeedbackVisible(false)}
-                >
-                  <Text style={styles.sheetSecondaryText}>Cancel</Text>
-                </Pressable>
-                <Pressable
-                  style={styles.sheetPrimaryButton}
-                  onPress={submitFeedback}
-                >
-                  <Text style={styles.sheetPrimaryText}>Send</Text>
-                </Pressable>
-              </View>
-            </KeyboardAvoidingView>
-          </Pressable>
-        </Modal>
+          onClose={() => setFeedbackVisible(false)}
+          message={feedbackMessage}
+          onUpdateMessage={setFeedbackMessage}
+          onSubmit={submitFeedback}
+          dismissKeyboard={dismissKeyboard}
+          title="Feedback"
+          placeholder="Share your thoughts"
+        />
 
-        <Modal
+        <SupportModal
           visible={privacyVisible}
-          animationType="slide"
-          presentationStyle="pageSheet"
-          onRequestClose={() => setPrivacyVisible(false)}
-        >
-          <Pressable
-            onPress={dismissKeyboard}
-            accessible={false}
-            style={styles.sheetTouchGuard}
-          >
-            <KeyboardAvoidingView
-              style={styles.sheetContainer}
-              behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-            >
-              <View style={styles.sheetHeader}>
-                <Text style={styles.sheetTitle}>Privacy</Text>
-                <Pressable onPress={() => setPrivacyVisible(false)}>
-                  <Text style={styles.sheetClose}>X</Text>
-                </Pressable>
-              </View>
-              <ScrollView
-                style={styles.sheetContent}
-                contentContainerStyle={styles.sheetScrollContent}
-              >
-                <TextInput
-                  style={[styles.sheetInput, styles.sheetTextArea]}
-                  value={privacyMessage}
-                  onChangeText={setPrivacyMessage}
-                  placeholder="Tell us your privacy request"
-                  multiline
-                  placeholderTextColor={DaPaintColors.textTertiary}
-                />
-              </ScrollView>
-              <View style={styles.sheetFooter}>
-                <Pressable
-                  style={styles.sheetSecondaryButton}
-                  onPress={() => setPrivacyVisible(false)}
-                >
-                  <Text style={styles.sheetSecondaryText}>Cancel</Text>
-                </Pressable>
-                <Pressable
-                  style={styles.sheetPrimaryButton}
-                  onPress={submitPrivacy}
-                >
-                  <Text style={styles.sheetPrimaryText}>Send</Text>
-                </Pressable>
-              </View>
-            </KeyboardAvoidingView>
-          </Pressable>
-        </Modal>
+          onClose={() => setPrivacyVisible(false)}
+          message={privacyMessage}
+          onUpdateMessage={setPrivacyMessage}
+          onSubmit={submitPrivacy}
+          dismissKeyboard={dismissKeyboard}
+          title="Privacy"
+          placeholder="Tell us your privacy request"
+        />
       </View>
 
-      {/* Feedback Button */}
       <FeedbackButton visible />
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  actionButton: {
-    alignItems: 'center',
-    backgroundColor: DaPaintButtons.faq.background,
-    borderColor: DaPaintButtons.faq.border,
-    borderRadius: DaPaintRadius.sm,
-    borderWidth: 1,
-    flex: 1,
-    minWidth: 140,
-    paddingVertical: DaPaintSpacing.sm,
-  },
-  actionButtonText: {
-    color: DaPaintButtons.faq.text,
-    ...DaPaintTypography.labelSmall,
-  },
-  actionRow: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: DaPaintSpacing.sm,
-    justifyContent: 'space-between',
-    marginBottom: DaPaintSpacing.xl,
-  },
-  avatar: {
-    height: '100%',
-    width: '100%',
-  },
-  avatarContainer: {
-    borderColor: DaPaintColors.primaryDeep,
-    borderRadius: DaPaintRadius.full,
-    borderWidth: 3,
-    height: 120,
-    marginBottom: DaPaintSpacing.md,
-    overflow: 'hidden',
-    width: 120,
-    ...DaPaintShadows.medium,
-    position: 'relative',
-  },
-  changePictureButton: {
-    backgroundColor: DaPaintColors.primaryDeep,
-    borderColor: DaPaintColors.bg0,
-    borderRadius: DaPaintRadius.full,
-    borderWidth: 2,
-    bottom: -8,
-    padding: DaPaintSpacing.xs,
-    position: 'absolute',
-    right: -8,
-    zIndex: 10,
-  },
-  changePictureText: {
-    color: '#FFFFFF',
-    ...DaPaintTypography.labelSmall,
-    fontSize: 10,
-  },
   container: {
     backgroundColor: DaPaintColors.bg0,
     flex: 1,
   },
   contentContainer: {
-    paddingBottom: DaPaintSpacing.xxxl, // Extra padding to account for bottom tab bar
+    paddingBottom: DaPaintSpacing.xxxl,
     padding: DaPaintSpacing.lg,
   },
   contentWrapper: {
     flex: 1,
-    maxWidth: 680, // Limit width on web
+    maxWidth: 680,
     alignSelf: 'center',
     width: '100%',
   },
-  displayName: {
-    color: DaPaintColors.textPrimary,
-    ...DaPaintTypography.displayMedium,
-    marginBottom: DaPaintSpacing.xxs,
-  },
-  headerContainer: {
-    alignItems: 'center',
-    marginBottom: DaPaintSpacing.xl,
-  },
-  loadingContainer: {
-    alignItems: 'center',
-    flex: 1,
-    justifyContent: 'center',
-  },
-  loadingText: {
-    color: DaPaintColors.textPrimary,
-    ...DaPaintTypography.bodyLarge,
-  },
-  location: {
-    color: DaPaintColors.textTertiary,
-    ...DaPaintTypography.bodySmall,
-    marginBottom: DaPaintSpacing.xxs,
-  },
   scrollView: {
     flex: 1,
-  },
-  sectionTitle: {
-    ...DaPaintTypography.displaySmall,
-    color: DaPaintColors.textPrimary,
-    marginBottom: DaPaintSpacing.md,
-    textAlign: 'center',
-  },
-  settingButton: {
-    alignItems: 'flex-start',
-    backgroundColor: 'transparent',
-    borderBottomColor: DaPaintButtons.faq.border,
-    borderBottomWidth: 1,
-    justifyContent: 'center',
-    minHeight: 52,
-    paddingHorizontal: DaPaintSpacing.md,
-    width: '100%',
-  },
-  settingButtonLast: {
-    borderBottomWidth: 0,
-  },
-  settingButtonText: {
-    ...DaPaintTypography.bodyMedium,
-    color: DaPaintButtons.faq.text,
-  },
-  settingsContainer: {
-    backgroundColor: DaPaintButtons.faq.background,
-    borderColor: DaPaintButtons.faq.border,
-    borderRadius: DaPaintRadius.md,
-    borderWidth: 1,
-    overflow: 'hidden',
-  },
-  sheetClose: {
-    color: DaPaintColors.textPrimary,
-    fontSize: 22,
-    fontWeight: '400',
-  },
-  sheetContainer: {
-    backgroundColor: DaPaintColors.bg0,
-    flex: 1,
-  },
-  sheetContent: {
-    flex: 1,
-  },
-  sheetDangerButton: {
-    alignItems: 'center',
-    backgroundColor: 'rgba(255,69,58,0.1)',
-    borderColor: DaPaintColors.error,
-    borderRadius: DaPaintRadius.sm,
-    borderWidth: 1,
-    marginTop: DaPaintSpacing.md,
-    paddingVertical: DaPaintSpacing.sm,
-  },
-  sheetDangerText: {
-    color: DaPaintColors.error,
-    ...DaPaintTypography.labelMedium,
-  },
-  sheetFooter: {
-    backgroundColor: DaPaintColors.surface,
-    borderTopColor: DaPaintButtons.faq.border,
-    borderTopWidth: 1,
-    flexDirection: 'row',
-    gap: DaPaintSpacing.sm,
-    paddingHorizontal: DaPaintSpacing.lg,
-    paddingVertical: DaPaintSpacing.md,
-  },
-  sheetHeader: {
-    alignItems: 'center',
-    backgroundColor: DaPaintColors.surface,
-    borderBottomColor: DaPaintButtons.faq.border,
-    borderBottomWidth: 1,
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    paddingBottom: DaPaintSpacing.headerBottom,
-    paddingHorizontal: DaPaintSpacing.lg,
-    paddingTop: DaPaintSpacing.headerTop,
-  },
-  sheetInput: {
-    backgroundColor: DaPaintButtons.faq.background,
-    borderColor: DaPaintButtons.faq.border,
-    borderRadius: DaPaintRadius.sm,
-    borderWidth: 1,
-    color: DaPaintColors.textPrimary,
-    padding: DaPaintSpacing.sm,
-  },
-  sheetLabel: {
-    ...DaPaintTypography.labelSmall,
-    color: DaPaintColors.textPrimary,
-    marginBottom: DaPaintSpacing.xxs,
-    marginTop: DaPaintSpacing.sm,
-  },
-  sheetPrimaryButton: {
-    alignItems: 'center',
-    backgroundColor: DaPaintColors.primaryDeep,
-    borderRadius: DaPaintRadius.sm,
-    flex: 1,
-    paddingVertical: DaPaintSpacing.sm,
-  },
-  sheetPrimaryText: {
-    color: '#FFFFFF',
-    ...DaPaintTypography.labelMedium,
-  },
-  sheetScrollContent: {
-    paddingBottom: DaPaintSpacing.xxl,
-    paddingHorizontal: DaPaintSpacing.lg,
-    paddingTop: DaPaintSpacing.md,
-  },
-  sheetSecondaryButton: {
-    alignItems: 'center',
-    backgroundColor: DaPaintButtons.faq.background,
-    borderColor: DaPaintButtons.faq.border,
-    borderRadius: DaPaintRadius.sm,
-    borderWidth: 1,
-    flex: 1,
-    paddingVertical: DaPaintSpacing.sm,
-  },
-  sheetSecondaryText: {
-    color: DaPaintButtons.faq.text,
-    ...DaPaintTypography.labelMedium,
-  },
-  sheetTextArea: {
-    minHeight: 120,
-    textAlignVertical: 'top',
-  },
-  sheetTitle: {
-    ...DaPaintTypography.displayMedium,
-    color: DaPaintColors.textPrimary,
-  },
-  sheetTouchGuard: {
-    flex: 1,
-  },
-  statCard: {
-    alignItems: 'center',
-    backgroundColor: DaPaintButtons.faq.background,
-    borderColor: DaPaintButtons.faq.border,
-    borderRadius: DaPaintRadius.md,
-    borderWidth: 1,
-    flex: 1,
-    minWidth: '48%',
-    paddingHorizontal: DaPaintSpacing.md,
-    paddingVertical: DaPaintSpacing.md,
-  },
-  statLabel: {
-    ...DaPaintTypography.bodySmall,
-    color: DaPaintColors.textTertiary,
-    textAlign: 'center',
-  },
-  statValue: {
-    ...DaPaintTypography.displaySmall,
-    color: DaPaintColors.textPrimary,
-    marginBottom: DaPaintSpacing.xxs,
-  },
-  statsGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: DaPaintSpacing.sm,
-    justifyContent: 'space-between',
-  },
-  statsSection: {
-    marginBottom: DaPaintSpacing.xl,
-  },
-  subscriberCount: {
-    color: DaPaintColors.textTertiary,
-    ...DaPaintTypography.bodySmall,
-  },
-  toggleLabel: {
-    color: DaPaintColors.textPrimary,
-    ...DaPaintTypography.bodyMedium,
-  },
-  toggleRow: {
-    alignItems: 'center',
-    borderBottomColor: DaPaintButtons.faq.border,
-    borderBottomWidth: 1,
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    paddingVertical: DaPaintSpacing.sm,
-  },
-  userInfoContainer: {
-    alignItems: 'center',
-    marginBottom: DaPaintSpacing.md,
-  },
-  username: {
-    color: DaPaintColors.textSecondary,
-    ...DaPaintTypography.bodyMedium,
-    marginBottom: DaPaintSpacing.xxs,
   },
 });

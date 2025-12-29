@@ -40,3 +40,4 @@ apply-*.js
 simple-*.js
 final-*.js
 .env.local
+README.md
