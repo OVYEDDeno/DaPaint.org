@@ -1,6 +1,6 @@
 // app/_layout.tsx - Fixed with better error handling
 import * as Sentry from '@sentry/react-native';
-import { Redirect, Stack, useSegments, useRouter } from 'expo-router';
+import { Redirect, Stack, useSegments } from 'expo-router';
 import Head from 'expo-router/head';
 import { useEffect, useState } from 'react';
 import { View, StyleSheet, Platform } from 'react-native';
@@ -8,25 +8,25 @@ import { View, StyleSheet, Platform } from 'react-native';
 import BackgroundLayer from '../components/ui/BackgroundLayer';
 import { getSession, signOut } from '../lib/api/auth';
 import { reportError } from '../lib/api/dapaints';
-import logger from '../lib/logger';
 import { supabase } from '../lib/supabase';
+import logger from '../lib/logger';
 
 const sentryIntegrations =
   Platform.OS === 'web'
     ? []
     : [
-        Sentry.mobileReplayIntegration(),
-        Sentry.feedbackIntegration({
-          styles: {
-            submitButton: {
-              backgroundColor: '#6a1b9a',
-            },
+      Sentry.mobileReplayIntegration(),
+      Sentry.feedbackIntegration({
+        styles: {
+          submitButton: {
+            backgroundColor: '#6a1b9a',
           },
-          namePlaceholder: 'Fullname',
-          isNameRequired: true,
-          isEmailRequired: true,
-        }),
-      ];
+        },
+        namePlaceholder: 'Fullname',
+        isNameRequired: true,
+        isEmailRequired: true,
+      }),
+    ];
 
 Sentry.init({
   dsn: 'https://f0a7bbf487722943592ee9615fc87981@o4510594012807168.ingest.us.sentry.io/4510594012938240',
@@ -41,7 +41,6 @@ function RootLayout() {
   const [sessionChecked, setSessionChecked] = useState(false);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const segments = useSegments();
-  const router = useRouter();
 
   useEffect(() => {
     let cancelled = false;
@@ -99,7 +98,6 @@ function RootLayout() {
               .single();
 
             if (userError || !user) {
-              // User doesn't exist in database - invalid session
               logger.warn(
                 'Session exists but user not in database, clearing session'
               );
@@ -109,7 +107,6 @@ function RootLayout() {
               setIsLoggedIn(true);
             }
           } catch (verifyError) {
-            // Error verifying user - clear session to be safe
             logger.error('Error verifying user:', verifyError);
             try {
               await signOut();
@@ -125,7 +122,6 @@ function RootLayout() {
         logger.debug('Session check complete. Logged in:', !!session);
       } catch (error) {
         logger.error('Unexpected error checking session:', error);
-        // Clear any invalid session data
         try {
           await signOut();
         } catch (signOutError) {
@@ -146,7 +142,6 @@ function RootLayout() {
       logger.debug('Auth state changed:', _event);
 
       if (session) {
-        // Verify user exists before setting logged in
         try {
           const { data: user, error: userError } = await supabase
             .from('users')
@@ -194,6 +189,12 @@ function RootLayout() {
     return <Redirect href="/(tabs)/feed" />;
   }
 
+  // Also redirect from index to feed if already logged in (landing page check)
+  // useSegments returns [] for the root index.tsx
+  if (isLoggedIn && segments.length === 0) {
+    return <Redirect href="/(tabs)/feed" />;
+  }
+
   return (
     <>
       <GlobalErrorHandler />
@@ -217,11 +218,11 @@ function RootLayout() {
       <View style={styles.root}>
         <BackgroundLayer />
         <Stack screenOptions={{ headerShown: false }}>
-          {isLoggedIn ? (
-            <Stack.Screen name="(tabs)" />
-          ) : (
-            <Stack.Screen name="(auth)" />
-          )}
+          <Stack.Screen name="index" />
+          <Stack.Screen name="(auth)" />
+          <Stack.Screen name="(tabs)" />
+          <Stack.Screen name="[username]" />
+          <Stack.Screen name="ad" />
         </Stack>
       </View>
     </>
@@ -263,8 +264,7 @@ export function GlobalErrorHandler() {
         window.removeEventListener('error', handleError);
       };
     }
-    // For native platforms, React Native handles errors differently
-    // and we rely on Sentry for error reporting
+    return undefined;
   }, []);
 
   return null;
