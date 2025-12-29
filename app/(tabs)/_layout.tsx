@@ -1,8 +1,6 @@
-﻿// app/(tabs)/_layout.tsx
-import { BlurView } from 'expo-blur';
-import { Tabs, useRouter } from 'expo-router';
+﻿import { Tabs, useRouter } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
-import { Text, StyleSheet, Image, View, Platform } from 'react-native';
+import { Text, StyleSheet, Image, View } from 'react-native';
 
 import { daPaintDataManager } from '../../lib/DaPaintDataManager';
 import logger from '../../lib/logger';
@@ -139,18 +137,6 @@ export default function TabsLayout() {
         tabBarStyle: hideTabBar
           ? [styles.tabBar, styles.tabBarHidden]
           : styles.tabBar,
-        tabBarBackground: () =>
-          Platform.OS === 'web' ? (
-            <View style={styles.tabBarBackdropWeb} />
-          ) : (
-            <BlurView
-              intensity={28}
-              tint="light"
-              style={StyleSheet.absoluteFillObject}
-            >
-              <View style={styles.tabBarBackdropNative} />
-            </BlurView>
-          ),
         headerShown: false,
       }}
     >
@@ -260,56 +246,15 @@ const styles = StyleSheet.create({
     width: 26,
   },
   tabBar: {
-    alignSelf: 'center',
     backgroundColor: 'transparent',
-    borderRadius: 28,
     borderTopColor: 'transparent',
     borderTopWidth: 0,
-    bottom: 16,
     height: 60,
-    left: 0,
-    maxWidth: 500,
-    overflow: 'hidden',
     paddingBottom: 8,
     paddingHorizontal: 16,
     paddingTop: 0,
-    position: 'absolute',
-    right: 0,
-    width: '90%',
-    ...Platform.select({
-      ios: {
-        shadowColor: '#000',
-        shadowOpacity: 0.15,
-        shadowRadius: 20,
-        shadowOffset: { width: 0, height: 8 },
-      },
-      android: {
-        elevation: 15,
-      },
-      web: {
-        boxShadow: '0px 8px 20px rgba(0,0,0,0.15)',
-      },
-      default: {
-        shadowColor: '#000',
-        shadowOpacity: 0.15,
-        shadowRadius: 20,
-        shadowOffset: { width: 0, height: 8 },
-        elevation: 15,
-      },
-    }),
+    width: '100%',
   },
-  tabBarBackdropNative: {
-    backgroundColor: 'rgba(255,255,255,0.75)',
-    borderRadius: 28,
-    flex: 1,
-  },
-  tabBarBackdropWeb: {
-    flex: 1,
-    backgroundColor: 'rgba(255,255,255,0.85)',
-    backdropFilter: 'blur(20px)',
-    WebkitBackdropFilter: 'blur(20px)',
-    borderRadius: 28,
-  } as any,
   tabBarHidden: {
     display: 'none',
   },
