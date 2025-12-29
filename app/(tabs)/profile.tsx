@@ -1,19 +1,40 @@
-﻿import React, { useState, useEffect, useCallback } from 'react';
-import { View, Text, StyleSheet, Image, ScrollView, Pressable, Platform, Alert, Modal, TextInput, Switch, KeyboardAvoidingView } from 'react-native';
+﻿import { decode } from 'base64-arraybuffer';
+import { manipulateAsync, SaveFormat } from 'expo-image-manipulator';
+import * as ImagePicker from 'expo-image-picker';
+import { useRouter, useFocusEffect } from 'expo-router';
+import React, { useState, useEffect, useCallback } from 'react';
+import {
+  View,
+  Text,
+  StyleSheet,
+  Image,
+  ScrollView,
+  Pressable,
+  Platform,
+  Alert,
+  Modal,
+  TextInput,
+  Switch,
+  KeyboardAvoidingView,
+} from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { supabase } from '../../lib/supabase';
+
+import AuthSection from '../../components/auth/AuthSection';
+import BackgroundLayer from '../../components/ui/BackgroundLayer';
+import FeedbackButton from '../../components/ui/FeedbackButton';
+import {
+  DaPaintButtons,
+  DaPaintColors,
+  DaPaintRadius,
+  DaPaintShadows,
+  DaPaintSpacing,
+  DaPaintTypography,
+} from '../../constants/DaPaintDesign';
 import { signOut, getSession } from '../../lib/api/auth';
 import { getProfilePicUrl } from '../../lib/profilePics';
-import { useRouter, useFocusEffect } from 'expo-router';
-import * as ImagePicker from 'expo-image-picker';
-import { manipulateAsync, SaveFormat } from 'expo-image-manipulator';
+import { supabase } from '../../lib/supabase';
 import { userDataManager } from '../../lib/UserDataManager';
-import BackgroundLayer from '../../components/ui/BackgroundLayer';
-import { DaPaintButtons, DaPaintColors, DaPaintRadius, DaPaintShadows, DaPaintSpacing, DaPaintTypography } from '../../constants/DaPaintDesign';
-import { decode } from 'base64-arraybuffer';
 import { getKeyboardDismissHandler } from '../../lib/webFocusGuard';
-import AuthSection from '../../components/auth/AuthSection';
-import FeedbackButton from '../../components/ui/FeedbackButton';
 
 export default function ProfileScreen() {
   const router = useRouter();
@@ -122,7 +143,9 @@ export default function ProfileScreen() {
     if (!userId) return;
     const { data, error } = await supabase
       .from('notification_settings')
-      .select('new_follower, dapaint_invite, dapaint_joined, dapaint_starting, dapaint_result, messages')
+      .select(
+        'new_follower, dapaint_invite, dapaint_joined, dapaint_starting, dapaint_result, messages'
+      )
       .eq('user_id', userId)
       .maybeSingle();
 
@@ -146,7 +169,9 @@ export default function ProfileScreen() {
           dapaint_result: true,
           messages: true,
         })
-        .select('new_follower, dapaint_invite, dapaint_joined, dapaint_starting, dapaint_result, messages')
+        .select(
+          'new_follower, dapaint_invite, dapaint_joined, dapaint_starting, dapaint_result, messages'
+        )
         .single();
 
       if (createError) {
@@ -169,22 +194,32 @@ export default function ProfileScreen() {
     { label: 'Highest Win Streak', value: userData?.highest_winstreak || '0' },
     { label: 'Wins', value: userData?.wins || '0' },
     { label: 'Losses', value: userData?.losses || '0' },
-    { label: 'Win Rate', value: userData?.wins !== undefined && userData?.losses !== undefined && (userData.wins + userData.losses) > 0 
-      ? `${Math.round((userData.wins / (userData.wins + userData.losses)) * 100)}%` 
-      : '0%' },
+    {
+      label: 'Win Rate',
+      value:
+        userData?.wins !== undefined &&
+        userData?.losses !== undefined &&
+        userData.wins + userData.losses > 0
+          ? `${Math.round((userData.wins / (userData.wins + userData.losses)) * 100)}%`
+          : '0%',
+    },
     { label: 'Disqualifications', value: userData?.disqualifications || '0' },
   ];
 
   const handleUploadPicture = async () => {
     try {
       // Request permission to access media library
-      const permissionResult = await ImagePicker.requestMediaLibraryPermissionsAsync();
-      
+      const permissionResult =
+        await ImagePicker.requestMediaLibraryPermissionsAsync();
+
       if (permissionResult.granted === false) {
-        Alert.alert('Permission Required', 'Permission to access media library is required to upload a profile picture.');
+        Alert.alert(
+          'Permission Required',
+          'Permission to access media library is required to upload a profile picture.'
+        );
         return;
       }
-      
+
       // Launch image library
       const result = await ImagePicker.launchImageLibraryAsync({
         mediaTypes: ['images'],
@@ -192,80 +227,88 @@ export default function ProfileScreen() {
         aspect: [3, 4], // Cover-friendly aspect ratio
         quality: 0.85,
       });
-      
+
       if (!result.canceled) {
         const uri = result.assets?.[0]?.uri;
         if (!uri) {
           throw new Error('No image URI returned from picker');
         }
-        
+
         // Generate a unique filename
         const filename = `${Date.now()}-${Math.random().toString(36).substring(2, 7)}.jpg`;
-        
+
         // Compress and convert image to format suitable for upload
         const imageData = await prepareImageForUpload(uri);
-        
+
         // Upload image to Supabase storage
         const { data: _data, error } = await supabase.storage
           .from('profile_pics')
           .upload(filename, imageData, {
             contentType: 'image/jpeg',
             cacheControl: '3600',
-            upsert: false
+            upsert: false,
           });
-        
+
         if (error) throw error;
-        
+
         // Update user's image_path in the database using authenticated user's ID
-        const { data: { user } } = await supabase.auth.getUser();
+        const {
+          data: { user },
+        } = await supabase.auth.getUser();
         if (!user) {
           throw new Error('User not authenticated');
         }
-        
+
         const { error: updateError } = await supabase
           .from('users')
           .update({ image_path: filename })
           .eq('id', user.id);
-        
+
         if (updateError) throw updateError;
-        
+
         // Update local state and force refresh
         setUserData((prev: any) => ({ ...prev, image_path: filename }));
         setAvatarError(false);
         setRefreshTrigger(prev => prev + 1); // Increment to force re-render
-        
+
         Alert.alert('Success', 'Profile picture updated successfully!');
       }
     } catch (error) {
       console.error('Error uploading profile picture:', error);
-      Alert.alert('Error', 'Failed to upload profile picture. Please try again.');
+      Alert.alert(
+        'Error',
+        'Failed to upload profile picture. Please try again.'
+      );
     }
   };
-  
+
   const goToPublicProfile = () => {
     if (userData?.username) {
       router.push(`/${userData.username}`);
     }
   };
-  
+
   const handleLogout = async () => {
     const signOutResult = await signOut();
     await userDataManager.clearCache();
 
     if (!signOutResult.success) {
-      Alert.alert("Error", signOutResult.error?.message || "Failed to sign out. Please try again.");
+      Alert.alert(
+        'Error',
+        signOutResult.error?.message || 'Failed to sign out. Please try again.'
+      );
       return;
     }
 
     const session = await getSession();
     if (session) {
-      Alert.alert("Error", "Session did not clear. Please try again.");
+      Alert.alert('Error', 'Session did not clear. Please try again.');
       return;
     }
 
-    router.replace("/");
+    router.replace('/');
   };
-  
+
   const prepareImageForUpload = async (uri: string): Promise<ArrayBuffer> => {
     // Use expo-image-manipulator to compress and resize the image
     const manipResult = await manipulateAsync(
@@ -273,12 +316,12 @@ export default function ProfileScreen() {
       [{ resize: { width: 1200, height: 1600 } }], // Resize for cover quality
       { compress: 0.75, format: SaveFormat.JPEG, base64: true } // Get base64 output
     );
-    
+
     // Convert base64 to ArrayBuffer for Supabase upload
     if (!manipResult.base64) {
       throw new Error('Failed to convert image to base64');
     }
-    
+
     const arrayBuffer = decode(manipResult.base64);
     return arrayBuffer;
   };
@@ -287,7 +330,10 @@ export default function ProfileScreen() {
     setEditForm(prev => ({ ...prev, [field]: value }));
   };
 
-  const updateAccountField = (field: keyof typeof accountForm, value: string) => {
+  const updateAccountField = (
+    field: keyof typeof accountForm,
+    value: string
+  ) => {
     setAccountForm(prev => ({ ...prev, [field]: value }));
   };
 
@@ -376,12 +422,21 @@ export default function ProfileScreen() {
       }
 
       if (password) {
-        const { error: passwordError } = await supabase.auth.updateUser({ password });
+        const { error: passwordError } = await supabase.auth.updateUser({
+          password,
+        });
         if (passwordError) {
-          Alert.alert('Error', passwordError.message || 'Failed to update password.');
+          Alert.alert(
+            'Error',
+            passwordError.message || 'Failed to update password.'
+          );
           return;
         }
-        setAccountForm(prev => ({ ...prev, newPassword: '', confirmPassword: '' }));
+        setAccountForm(prev => ({
+          ...prev,
+          newPassword: '',
+          confirmPassword: '',
+        }));
       }
 
       setSettingsModalVisible(false);
@@ -406,7 +461,10 @@ export default function ProfileScreen() {
             try {
               const { error } = await supabase.rpc('delete_user');
               if (error) {
-                Alert.alert('Error', error.message || 'Failed to delete account.');
+                Alert.alert(
+                  'Error',
+                  error.message || 'Failed to delete account.'
+                );
                 return;
               }
               await userDataManager.clearCache();
@@ -422,7 +480,10 @@ export default function ProfileScreen() {
     );
   };
 
-  const handleToggleNotification = async (key: keyof NonNullable<typeof notificationSettings>, value: boolean) => {
+  const handleToggleNotification = async (
+    key: keyof NonNullable<typeof notificationSettings>,
+    value: boolean
+  ) => {
     if (!userData?.id) return;
     setNotificationSettings(prev => (prev ? { ...prev, [key]: value } : prev));
     const { error } = await supabase
@@ -511,9 +572,9 @@ export default function ProfileScreen() {
   }
 
   const FALLBACK_AVATAR = require('../../assets/logo.png');
-  
+
   // Get avatar URI with cache busting enabled
-  const avatarUri = userData?.image_path 
+  const avatarUri = userData?.image_path
     ? getProfilePicUrl(userData.image_path, true)
     : null;
 
@@ -521,8 +582,8 @@ export default function ProfileScreen() {
     <SafeAreaView style={styles.container}>
       <BackgroundLayer />
       <View style={styles.contentWrapper}>
-        <ScrollView 
-          style={styles.scrollView} 
+        <ScrollView
+          style={styles.scrollView}
           contentContainerStyle={styles.contentContainer}
           showsVerticalScrollIndicator={false}
           bounces={false}
@@ -532,16 +593,23 @@ export default function ProfileScreen() {
             <View style={styles.avatarContainer}>
               <Image
                 key={`avatar-${refreshTrigger}`}
-                source={!avatarUri || avatarError ? FALLBACK_AVATAR : { uri: avatarUri }}
+                source={
+                  !avatarUri || avatarError
+                    ? FALLBACK_AVATAR
+                    : { uri: avatarUri }
+                }
                 style={styles.avatar}
                 resizeMode="cover"
                 onError={() => setAvatarError(true)}
               />
-              <Pressable style={styles.changePictureButton} onPress={handleUploadPicture}>
+              <Pressable
+                style={styles.changePictureButton}
+                onPress={handleUploadPicture}
+              >
                 <Text style={styles.changePictureText}>+</Text>
               </Pressable>
             </View>
-            
+
             <View style={styles.userInfoContainer}>
               <Text style={styles.displayName}>
                 {userData?.display_name || 'User'}
@@ -551,7 +619,9 @@ export default function ProfileScreen() {
               </Text>
               {(userData?.city || userData?.zipcode) && (
                 <Text style={styles.location}>
-                  {[userData?.city, userData?.zipcode].filter(Boolean).join(' - ')}
+                  {[userData?.city, userData?.zipcode]
+                    .filter(Boolean)
+                    .join(' - ')}
                 </Text>
               )}
               <Text style={styles.subscriberCount}>
@@ -561,28 +631,37 @@ export default function ProfileScreen() {
           </View>
 
           <View style={styles.actionRow}>
-            <Pressable style={styles.actionButton} onPress={() => setEditModalVisible(true)}>
+            <Pressable
+              style={styles.actionButton}
+              onPress={() => setEditModalVisible(true)}
+            >
               <Text style={styles.actionButtonText}>Edit Profile</Text>
             </Pressable>
-            <Pressable style={styles.actionButton} onPress={() => setSettingsModalVisible(true)}>
+            <Pressable
+              style={styles.actionButton}
+              onPress={() => setSettingsModalVisible(true)}
+            >
               <Text style={styles.actionButtonText}>Account</Text>
             </Pressable>
-            <Pressable style={styles.actionButton} onPress={() => setNotificationsVisible(true)}>
+            <Pressable
+              style={styles.actionButton}
+              onPress={() => setNotificationsVisible(true)}
+            >
               <Text style={styles.actionButtonText}>Notifications</Text>
             </Pressable>
             <Pressable style={styles.actionButton} onPress={goToPublicProfile}>
               <Text style={styles.actionButtonText}>Public Profile</Text>
             </Pressable>
           </View>
-          
+
           {/* Stats Section */}
           <View style={styles.statsSection}>
             <Text style={styles.sectionTitle}>Stats</Text>
             <View style={styles.statsGrid}>
               {userStats.map((stat, index) => (
                 <View key={index} style={styles.statCard}>
-                <Text style={styles.statValue}>{stat.value}</Text>
-                <Text style={styles.statLabel}>{stat.label}</Text>
+                  <Text style={styles.statValue}>{stat.value}</Text>
+                  <Text style={styles.statLabel}>{stat.label}</Text>
                 </View>
               ))}
             </View>
@@ -590,16 +669,28 @@ export default function ProfileScreen() {
 
           {/* Settings */}
           <View style={styles.settingsContainer}>
-            <Pressable style={styles.settingButton} onPress={() => setSupportVisible(true)}>
+            <Pressable
+              style={styles.settingButton}
+              onPress={() => setSupportVisible(true)}
+            >
               <Text style={styles.settingButtonText}>Help & Support</Text>
             </Pressable>
-            <Pressable style={styles.settingButton} onPress={() => setFeedbackVisible(true)}>
+            <Pressable
+              style={styles.settingButton}
+              onPress={() => setFeedbackVisible(true)}
+            >
               <Text style={styles.settingButtonText}>Feedback</Text>
             </Pressable>
-            <Pressable style={styles.settingButton} onPress={() => setPrivacyVisible(true)}>
+            <Pressable
+              style={styles.settingButton}
+              onPress={() => setPrivacyVisible(true)}
+            >
               <Text style={styles.settingButtonText}>Privacy</Text>
             </Pressable>
-            <Pressable style={[styles.settingButton, styles.settingButtonLast]} onPress={handleLogout}>
+            <Pressable
+              style={[styles.settingButton, styles.settingButtonLast]}
+              onPress={handleLogout}
+            >
               <Text style={styles.settingButtonText}>Log Out</Text>
             </Pressable>
           </View>
@@ -611,7 +702,11 @@ export default function ProfileScreen() {
           presentationStyle="pageSheet"
           onRequestClose={() => setEditModalVisible(false)}
         >
-          <Pressable onPress={dismissKeyboard} accessible={false} style={styles.sheetTouchGuard}>
+          <Pressable
+            onPress={dismissKeyboard}
+            accessible={false}
+            style={styles.sheetTouchGuard}
+          >
             <KeyboardAvoidingView
               style={styles.sheetContainer}
               behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
@@ -631,7 +726,7 @@ export default function ProfileScreen() {
                 <TextInput
                   style={styles.sheetInput}
                   value={editForm.display_name}
-                  onChangeText={(text) => updateEditField('display_name', text)}
+                  onChangeText={text => updateEditField('display_name', text)}
                   placeholder="Display name"
                   placeholderTextColor={DaPaintColors.textTertiary}
                 />
@@ -640,7 +735,9 @@ export default function ProfileScreen() {
                 <TextInput
                   style={styles.sheetInput}
                   value={editForm.username}
-                  onChangeText={(text) => updateEditField('username', text.toLowerCase())}
+                  onChangeText={text =>
+                    updateEditField('username', text.toLowerCase())
+                  }
                   placeholder="username"
                   autoCapitalize="none"
                   placeholderTextColor={DaPaintColors.textTertiary}
@@ -650,7 +747,7 @@ export default function ProfileScreen() {
                 <TextInput
                   style={styles.sheetInput}
                   value={editForm.phone}
-                  onChangeText={(text) => updateEditField('phone', text)}
+                  onChangeText={text => updateEditField('phone', text)}
                   placeholder="(123) 456-7890"
                   keyboardType="phone-pad"
                   placeholderTextColor={DaPaintColors.textTertiary}
@@ -660,7 +757,7 @@ export default function ProfileScreen() {
                 <TextInput
                   style={styles.sheetInput}
                   value={editForm.birthday}
-                  onChangeText={(text) => updateEditField('birthday', text)}
+                  onChangeText={text => updateEditField('birthday', text)}
                   placeholder="2000-01-01"
                   placeholderTextColor={DaPaintColors.textTertiary}
                 />
@@ -669,7 +766,7 @@ export default function ProfileScreen() {
                 <TextInput
                   style={styles.sheetInput}
                   value={editForm.city}
-                  onChangeText={(text) => updateEditField('city', text)}
+                  onChangeText={text => updateEditField('city', text)}
                   placeholder="City"
                   placeholderTextColor={DaPaintColors.textTertiary}
                 />
@@ -678,18 +775,27 @@ export default function ProfileScreen() {
                 <TextInput
                   style={styles.sheetInput}
                   value={editForm.zipcode}
-                  onChangeText={(text) => updateEditField('zipcode', text)}
+                  onChangeText={text => updateEditField('zipcode', text)}
                   placeholder="Zip code"
                   autoCapitalize="characters"
                   placeholderTextColor={DaPaintColors.textTertiary}
                 />
               </ScrollView>
               <View style={styles.sheetFooter}>
-                <Pressable style={styles.sheetSecondaryButton} onPress={() => setEditModalVisible(false)}>
+                <Pressable
+                  style={styles.sheetSecondaryButton}
+                  onPress={() => setEditModalVisible(false)}
+                >
                   <Text style={styles.sheetSecondaryText}>Cancel</Text>
                 </Pressable>
-                <Pressable style={styles.sheetPrimaryButton} onPress={handleSaveProfile} disabled={saving}>
-                  <Text style={styles.sheetPrimaryText}>{saving ? 'Saving...' : 'Save'}</Text>
+                <Pressable
+                  style={styles.sheetPrimaryButton}
+                  onPress={handleSaveProfile}
+                  disabled={saving}
+                >
+                  <Text style={styles.sheetPrimaryText}>
+                    {saving ? 'Saving...' : 'Save'}
+                  </Text>
                 </Pressable>
               </View>
             </KeyboardAvoidingView>
@@ -702,7 +808,11 @@ export default function ProfileScreen() {
           presentationStyle="pageSheet"
           onRequestClose={() => setSettingsModalVisible(false)}
         >
-          <Pressable onPress={dismissKeyboard} accessible={false} style={styles.sheetTouchGuard}>
+          <Pressable
+            onPress={dismissKeyboard}
+            accessible={false}
+            style={styles.sheetTouchGuard}
+          >
             <KeyboardAvoidingView
               style={styles.sheetContainer}
               behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
@@ -722,7 +832,7 @@ export default function ProfileScreen() {
                 <TextInput
                   style={styles.sheetInput}
                   value={accountForm.email}
-                  onChangeText={(text) => updateAccountField('email', text)}
+                  onChangeText={text => updateAccountField('email', text)}
                   placeholder="you@email.com"
                   keyboardType="email-address"
                   autoCapitalize="none"
@@ -733,7 +843,7 @@ export default function ProfileScreen() {
                 <TextInput
                   style={styles.sheetInput}
                   value={accountForm.newPassword}
-                  onChangeText={(text) => updateAccountField('newPassword', text)}
+                  onChangeText={text => updateAccountField('newPassword', text)}
                   placeholder="New password"
                   secureTextEntry
                   placeholderTextColor={DaPaintColors.textTertiary}
@@ -743,22 +853,36 @@ export default function ProfileScreen() {
                 <TextInput
                   style={styles.sheetInput}
                   value={accountForm.confirmPassword}
-                  onChangeText={(text) => updateAccountField('confirmPassword', text)}
+                  onChangeText={text =>
+                    updateAccountField('confirmPassword', text)
+                  }
                   placeholder="Confirm password"
                   secureTextEntry
                   placeholderTextColor={DaPaintColors.textTertiary}
                 />
 
-                <Pressable style={styles.sheetDangerButton} onPress={handleDeleteAccount}>
+                <Pressable
+                  style={styles.sheetDangerButton}
+                  onPress={handleDeleteAccount}
+                >
                   <Text style={styles.sheetDangerText}>Delete Account</Text>
                 </Pressable>
               </ScrollView>
               <View style={styles.sheetFooter}>
-                <Pressable style={styles.sheetSecondaryButton} onPress={() => setSettingsModalVisible(false)}>
+                <Pressable
+                  style={styles.sheetSecondaryButton}
+                  onPress={() => setSettingsModalVisible(false)}
+                >
                   <Text style={styles.sheetSecondaryText}>Cancel</Text>
                 </Pressable>
-                <Pressable style={styles.sheetPrimaryButton} onPress={handleSaveAccount} disabled={saving}>
-                  <Text style={styles.sheetPrimaryText}>{saving ? 'Saving...' : 'Save'}</Text>
+                <Pressable
+                  style={styles.sheetPrimaryButton}
+                  onPress={handleSaveAccount}
+                  disabled={saving}
+                >
+                  <Text style={styles.sheetPrimaryText}>
+                    {saving ? 'Saving...' : 'Save'}
+                  </Text>
                 </Pressable>
               </View>
             </KeyboardAvoidingView>
@@ -778,52 +902,70 @@ export default function ProfileScreen() {
                 <Text style={styles.sheetClose}>X</Text>
               </Pressable>
             </View>
-            <ScrollView style={styles.sheetContent} contentContainerStyle={styles.sheetScrollContent}>
+            <ScrollView
+              style={styles.sheetContent}
+              contentContainerStyle={styles.sheetScrollContent}
+            >
               <View style={styles.toggleRow}>
                 <Text style={styles.toggleLabel}>New Followers</Text>
                 <Switch
                   value={notificationSettings?.new_follower ?? true}
-                  onValueChange={(value) => handleToggleNotification('new_follower', value)}
+                  onValueChange={value =>
+                    handleToggleNotification('new_follower', value)
+                  }
                 />
               </View>
               <View style={styles.toggleRow}>
                 <Text style={styles.toggleLabel}>DaPaint Invites</Text>
                 <Switch
                   value={notificationSettings?.dapaint_invite ?? true}
-                  onValueChange={(value) => handleToggleNotification('dapaint_invite', value)}
+                  onValueChange={value =>
+                    handleToggleNotification('dapaint_invite', value)
+                  }
                 />
               </View>
               <View style={styles.toggleRow}>
                 <Text style={styles.toggleLabel}>DaPaint Joined</Text>
                 <Switch
                   value={notificationSettings?.dapaint_joined ?? true}
-                  onValueChange={(value) => handleToggleNotification('dapaint_joined', value)}
+                  onValueChange={value =>
+                    handleToggleNotification('dapaint_joined', value)
+                  }
                 />
               </View>
               <View style={styles.toggleRow}>
                 <Text style={styles.toggleLabel}>DaPaint Starting</Text>
                 <Switch
                   value={notificationSettings?.dapaint_starting ?? true}
-                  onValueChange={(value) => handleToggleNotification('dapaint_starting', value)}
+                  onValueChange={value =>
+                    handleToggleNotification('dapaint_starting', value)
+                  }
                 />
               </View>
               <View style={styles.toggleRow}>
                 <Text style={styles.toggleLabel}>DaPaint Results</Text>
                 <Switch
                   value={notificationSettings?.dapaint_result ?? true}
-                  onValueChange={(value) => handleToggleNotification('dapaint_result', value)}
+                  onValueChange={value =>
+                    handleToggleNotification('dapaint_result', value)
+                  }
                 />
               </View>
               <View style={styles.toggleRow}>
                 <Text style={styles.toggleLabel}>Messages</Text>
                 <Switch
                   value={notificationSettings?.messages ?? true}
-                  onValueChange={(value) => handleToggleNotification('messages', value)}
+                  onValueChange={value =>
+                    handleToggleNotification('messages', value)
+                  }
                 />
               </View>
             </ScrollView>
             <View style={styles.sheetFooter}>
-              <Pressable style={styles.sheetPrimaryButton} onPress={() => setNotificationsVisible(false)}>
+              <Pressable
+                style={styles.sheetPrimaryButton}
+                onPress={() => setNotificationsVisible(false)}
+              >
                 <Text style={styles.sheetPrimaryText}>Done</Text>
               </Pressable>
             </View>
@@ -836,7 +978,11 @@ export default function ProfileScreen() {
           presentationStyle="pageSheet"
           onRequestClose={() => setSupportVisible(false)}
         >
-          <Pressable onPress={dismissKeyboard} accessible={false} style={styles.sheetTouchGuard}>
+          <Pressable
+            onPress={dismissKeyboard}
+            accessible={false}
+            style={styles.sheetTouchGuard}
+          >
             <KeyboardAvoidingView
               style={styles.sheetContainer}
               behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
@@ -847,7 +993,10 @@ export default function ProfileScreen() {
                   <Text style={styles.sheetClose}>X</Text>
                 </Pressable>
               </View>
-              <ScrollView style={styles.sheetContent} contentContainerStyle={styles.sheetScrollContent}>
+              <ScrollView
+                style={styles.sheetContent}
+                contentContainerStyle={styles.sheetScrollContent}
+              >
                 <TextInput
                   style={[styles.sheetInput, styles.sheetTextArea]}
                   value={supportMessage}
@@ -858,10 +1007,16 @@ export default function ProfileScreen() {
                 />
               </ScrollView>
               <View style={styles.sheetFooter}>
-                <Pressable style={styles.sheetSecondaryButton} onPress={() => setSupportVisible(false)}>
+                <Pressable
+                  style={styles.sheetSecondaryButton}
+                  onPress={() => setSupportVisible(false)}
+                >
                   <Text style={styles.sheetSecondaryText}>Cancel</Text>
                 </Pressable>
-                <Pressable style={styles.sheetPrimaryButton} onPress={submitSupport}>
+                <Pressable
+                  style={styles.sheetPrimaryButton}
+                  onPress={submitSupport}
+                >
                   <Text style={styles.sheetPrimaryText}>Send</Text>
                 </Pressable>
               </View>
@@ -875,7 +1030,11 @@ export default function ProfileScreen() {
           presentationStyle="pageSheet"
           onRequestClose={() => setFeedbackVisible(false)}
         >
-          <Pressable onPress={dismissKeyboard} accessible={false} style={styles.sheetTouchGuard}>
+          <Pressable
+            onPress={dismissKeyboard}
+            accessible={false}
+            style={styles.sheetTouchGuard}
+          >
             <KeyboardAvoidingView
               style={styles.sheetContainer}
               behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
@@ -886,7 +1045,10 @@ export default function ProfileScreen() {
                   <Text style={styles.sheetClose}>X</Text>
                 </Pressable>
               </View>
-              <ScrollView style={styles.sheetContent} contentContainerStyle={styles.sheetScrollContent}>
+              <ScrollView
+                style={styles.sheetContent}
+                contentContainerStyle={styles.sheetScrollContent}
+              >
                 <TextInput
                   style={[styles.sheetInput, styles.sheetTextArea]}
                   value={feedbackMessage}
@@ -897,10 +1059,16 @@ export default function ProfileScreen() {
                 />
               </ScrollView>
               <View style={styles.sheetFooter}>
-                <Pressable style={styles.sheetSecondaryButton} onPress={() => setFeedbackVisible(false)}>
+                <Pressable
+                  style={styles.sheetSecondaryButton}
+                  onPress={() => setFeedbackVisible(false)}
+                >
                   <Text style={styles.sheetSecondaryText}>Cancel</Text>
                 </Pressable>
-                <Pressable style={styles.sheetPrimaryButton} onPress={submitFeedback}>
+                <Pressable
+                  style={styles.sheetPrimaryButton}
+                  onPress={submitFeedback}
+                >
                   <Text style={styles.sheetPrimaryText}>Send</Text>
                 </Pressable>
               </View>
@@ -914,7 +1082,11 @@ export default function ProfileScreen() {
           presentationStyle="pageSheet"
           onRequestClose={() => setPrivacyVisible(false)}
         >
-          <Pressable onPress={dismissKeyboard} accessible={false} style={styles.sheetTouchGuard}>
+          <Pressable
+            onPress={dismissKeyboard}
+            accessible={false}
+            style={styles.sheetTouchGuard}
+          >
             <KeyboardAvoidingView
               style={styles.sheetContainer}
               behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
@@ -925,7 +1097,10 @@ export default function ProfileScreen() {
                   <Text style={styles.sheetClose}>X</Text>
                 </Pressable>
               </View>
-              <ScrollView style={styles.sheetContent} contentContainerStyle={styles.sheetScrollContent}>
+              <ScrollView
+                style={styles.sheetContent}
+                contentContainerStyle={styles.sheetScrollContent}
+              >
                 <TextInput
                   style={[styles.sheetInput, styles.sheetTextArea]}
                   value={privacyMessage}
@@ -936,10 +1111,16 @@ export default function ProfileScreen() {
                 />
               </ScrollView>
               <View style={styles.sheetFooter}>
-                <Pressable style={styles.sheetSecondaryButton} onPress={() => setPrivacyVisible(false)}>
+                <Pressable
+                  style={styles.sheetSecondaryButton}
+                  onPress={() => setPrivacyVisible(false)}
+                >
                   <Text style={styles.sheetSecondaryText}>Cancel</Text>
                 </Pressable>
-                <Pressable style={styles.sheetPrimaryButton} onPress={submitPrivacy}>
+                <Pressable
+                  style={styles.sheetPrimaryButton}
+                  onPress={submitPrivacy}
+                >
                   <Text style={styles.sheetPrimaryText}>Send</Text>
                 </Pressable>
               </View>
@@ -947,68 +1128,59 @@ export default function ProfileScreen() {
           </Pressable>
         </Modal>
       </View>
-      
+
       {/* Feedback Button */}
-      <FeedbackButton visible={true} />
+      <FeedbackButton visible />
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: DaPaintColors.bg0,
-  },
-  contentWrapper: {
-    flex: 1,
-    maxWidth: 680, // Limit width on web
-    alignSelf: 'center',
-    width: '100%',
-  },
-  scrollView: {
-    flex: 1,
-  },
-  contentContainer: {
-    paddingBottom: DaPaintSpacing.xxxl, // Extra padding to account for bottom tab bar
-    padding: DaPaintSpacing.lg,
-  },
-  loadingContainer: {
-    flex: 1,
-    justifyContent: 'center',
+  actionButton: {
     alignItems: 'center',
+    backgroundColor: DaPaintButtons.faq.background,
+    borderColor: DaPaintButtons.faq.border,
+    borderRadius: DaPaintRadius.sm,
+    borderWidth: 1,
+    flex: 1,
+    minWidth: 140,
+    paddingVertical: DaPaintSpacing.sm,
   },
-  loadingText: {
-    color: DaPaintColors.textPrimary,
-    ...DaPaintTypography.bodyLarge,
+  actionButtonText: {
+    color: DaPaintButtons.faq.text,
+    ...DaPaintTypography.labelSmall,
   },
-  headerContainer: {
-    alignItems: 'center',
+  actionRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: DaPaintSpacing.sm,
+    justifyContent: 'space-between',
     marginBottom: DaPaintSpacing.xl,
   },
+  avatar: {
+    height: '100%',
+    width: '100%',
+  },
   avatarContainer: {
-    width: 120,
-    height: 120,
-    borderRadius: DaPaintRadius.full,
-    overflow: 'hidden',
-    borderWidth: 3,
     borderColor: DaPaintColors.primaryDeep,
+    borderRadius: DaPaintRadius.full,
+    borderWidth: 3,
+    height: 120,
     marginBottom: DaPaintSpacing.md,
+    overflow: 'hidden',
+    width: 120,
     ...DaPaintShadows.medium,
     position: 'relative',
   },
-  avatar: {
-    width: '100%',
-    height: '100%',
-  },
   changePictureButton: {
-    position: 'absolute',
-    bottom: -8,
-    right: -8,
     backgroundColor: DaPaintColors.primaryDeep,
-    borderRadius: DaPaintRadius.full,
-    padding: DaPaintSpacing.xs,
-    borderWidth: 2,
     borderColor: DaPaintColors.bg0,
+    borderRadius: DaPaintRadius.full,
+    borderWidth: 2,
+    bottom: -8,
+    padding: DaPaintSpacing.xs,
+    position: 'absolute',
+    right: -8,
     zIndex: 10,
   },
   changePictureText: {
@@ -1016,52 +1188,45 @@ const styles = StyleSheet.create({
     ...DaPaintTypography.labelSmall,
     fontSize: 10,
   },
-  userInfoContainer: {
-    alignItems: 'center',
-    marginBottom: DaPaintSpacing.md,
+  container: {
+    backgroundColor: DaPaintColors.bg0,
+    flex: 1,
+  },
+  contentContainer: {
+    paddingBottom: DaPaintSpacing.xxxl, // Extra padding to account for bottom tab bar
+    padding: DaPaintSpacing.lg,
+  },
+  contentWrapper: {
+    flex: 1,
+    maxWidth: 680, // Limit width on web
+    alignSelf: 'center',
+    width: '100%',
   },
   displayName: {
     color: DaPaintColors.textPrimary,
     ...DaPaintTypography.displayMedium,
     marginBottom: DaPaintSpacing.xxs,
   },
-  username: {
-    color: DaPaintColors.textSecondary,
-    ...DaPaintTypography.bodyMedium,
-    marginBottom: DaPaintSpacing.xxs,
+  headerContainer: {
+    alignItems: 'center',
+    marginBottom: DaPaintSpacing.xl,
+  },
+  loadingContainer: {
+    alignItems: 'center',
+    flex: 1,
+    justifyContent: 'center',
+  },
+  loadingText: {
+    color: DaPaintColors.textPrimary,
+    ...DaPaintTypography.bodyLarge,
   },
   location: {
     color: DaPaintColors.textTertiary,
     ...DaPaintTypography.bodySmall,
     marginBottom: DaPaintSpacing.xxs,
   },
-  subscriberCount: {
-    color: DaPaintColors.textTertiary,
-    ...DaPaintTypography.bodySmall,
-  },
-  actionRow: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    justifyContent: 'space-between',
-    gap: DaPaintSpacing.sm,
-    marginBottom: DaPaintSpacing.xl,
-  },
-  actionButton: {
+  scrollView: {
     flex: 1,
-    minWidth: 140,
-    paddingVertical: DaPaintSpacing.sm,
-    borderRadius: DaPaintRadius.sm,
-    borderWidth: 1,
-    borderColor: DaPaintButtons.faq.border,
-    backgroundColor: DaPaintButtons.faq.background,
-    alignItems: 'center',
-  },
-  actionButtonText: {
-    color: DaPaintButtons.faq.text,
-    ...DaPaintTypography.labelSmall,
-  },
-  statsSection: {
-    marginBottom: DaPaintSpacing.xl,
   },
   sectionTitle: {
     ...DaPaintTypography.displaySmall,
@@ -1069,49 +1234,15 @@ const styles = StyleSheet.create({
     marginBottom: DaPaintSpacing.md,
     textAlign: 'center',
   },
-  statsGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    justifyContent: 'space-between',
-    gap: DaPaintSpacing.sm,
-  },
-  statCard: {
-    flex: 1,
-    minWidth: '48%',
-    paddingVertical: DaPaintSpacing.md,
-    paddingHorizontal: DaPaintSpacing.md,
-    borderRadius: DaPaintRadius.md,
-    backgroundColor: DaPaintButtons.faq.background,
-    borderWidth: 1,
-    borderColor: DaPaintButtons.faq.border,
-    alignItems: 'center',
-  },
-  statValue: {
-    ...DaPaintTypography.displaySmall,
-    color: DaPaintColors.textPrimary,
-    marginBottom: DaPaintSpacing.xxs,
-  },
-  statLabel: {
-    ...DaPaintTypography.bodySmall,
-    color: DaPaintColors.textTertiary,
-    textAlign: 'center',
-  },
-  settingsContainer: {
-    borderRadius: DaPaintRadius.md,
-    backgroundColor: DaPaintButtons.faq.background,
-    borderWidth: 1,
-    borderColor: DaPaintButtons.faq.border,
-    overflow: 'hidden',
-  },
   settingButton: {
-    minHeight: 52,
-    width: '100%',
-    backgroundColor: 'transparent',
-    justifyContent: 'center',
-    paddingHorizontal: DaPaintSpacing.md,
     alignItems: 'flex-start',
-    borderBottomWidth: 1,
+    backgroundColor: 'transparent',
     borderBottomColor: DaPaintButtons.faq.border,
+    borderBottomWidth: 1,
+    justifyContent: 'center',
+    minHeight: 52,
+    paddingHorizontal: DaPaintSpacing.md,
+    width: '100%',
   },
   settingButtonLast: {
     borderBottomWidth: 0,
@@ -1120,115 +1251,165 @@ const styles = StyleSheet.create({
     ...DaPaintTypography.bodyMedium,
     color: DaPaintButtons.faq.text,
   },
-  sheetTouchGuard: {
-    flex: 1,
-  },
-  sheetContainer: {
-    flex: 1,
-    backgroundColor: DaPaintColors.bg0,
-  },
-  sheetHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: DaPaintSpacing.lg,
-    paddingTop: DaPaintSpacing.headerTop,
-    paddingBottom: DaPaintSpacing.headerBottom,
-    borderBottomWidth: 1,
-    borderBottomColor: DaPaintButtons.faq.border,
-    backgroundColor: DaPaintColors.surface,
-  },
-  sheetTitle: {
-    ...DaPaintTypography.displayMedium,
-    color: DaPaintColors.textPrimary,
+  settingsContainer: {
+    backgroundColor: DaPaintButtons.faq.background,
+    borderColor: DaPaintButtons.faq.border,
+    borderRadius: DaPaintRadius.md,
+    borderWidth: 1,
+    overflow: 'hidden',
   },
   sheetClose: {
-    fontSize: 22,
     color: DaPaintColors.textPrimary,
+    fontSize: 22,
     fontWeight: '400',
+  },
+  sheetContainer: {
+    backgroundColor: DaPaintColors.bg0,
+    flex: 1,
   },
   sheetContent: {
     flex: 1,
   },
-  sheetScrollContent: {
-    paddingHorizontal: DaPaintSpacing.lg,
-    paddingTop: DaPaintSpacing.md,
-    paddingBottom: DaPaintSpacing.xxl,
-  },
-  sheetLabel: {
-    ...DaPaintTypography.labelSmall,
-    color: DaPaintColors.textPrimary,
-    marginTop: DaPaintSpacing.sm,
-    marginBottom: DaPaintSpacing.xxs,
-  },
-  sheetInput: {
-    borderWidth: 1,
-    borderColor: DaPaintButtons.faq.border,
-    borderRadius: DaPaintRadius.sm,
-    padding: DaPaintSpacing.sm,
-    color: DaPaintColors.textPrimary,
-    backgroundColor: DaPaintButtons.faq.background,
-  },
-  sheetTextArea: {
-    minHeight: 120,
-    textAlignVertical: 'top',
-  },
-  sheetFooter: {
-    flexDirection: 'row',
-    gap: DaPaintSpacing.sm,
-    paddingHorizontal: DaPaintSpacing.lg,
-    paddingVertical: DaPaintSpacing.md,
-    borderTopWidth: 1,
-    borderTopColor: DaPaintButtons.faq.border,
-    backgroundColor: DaPaintColors.surface,
-  },
-  sheetPrimaryButton: {
-    flex: 1,
-    backgroundColor: DaPaintColors.primaryDeep,
-    borderRadius: DaPaintRadius.sm,
-    paddingVertical: DaPaintSpacing.sm,
-    alignItems: 'center',
-  },
-  sheetPrimaryText: {
-    color: '#FFFFFF',
-    ...DaPaintTypography.labelMedium,
-  },
-  sheetSecondaryButton: {
-    flex: 1,
-    borderWidth: 1,
-    borderColor: DaPaintButtons.faq.border,
-    borderRadius: DaPaintRadius.sm,
-    paddingVertical: DaPaintSpacing.sm,
-    alignItems: 'center',
-    backgroundColor: DaPaintButtons.faq.background,
-  },
-  sheetSecondaryText: {
-    color: DaPaintButtons.faq.text,
-    ...DaPaintTypography.labelMedium,
-  },
   sheetDangerButton: {
-    marginTop: DaPaintSpacing.md,
-    borderWidth: 1,
-    borderColor: DaPaintColors.error,
-    borderRadius: DaPaintRadius.sm,
-    paddingVertical: DaPaintSpacing.sm,
     alignItems: 'center',
     backgroundColor: 'rgba(255,69,58,0.1)',
+    borderColor: DaPaintColors.error,
+    borderRadius: DaPaintRadius.sm,
+    borderWidth: 1,
+    marginTop: DaPaintSpacing.md,
+    paddingVertical: DaPaintSpacing.sm,
   },
   sheetDangerText: {
     color: DaPaintColors.error,
     ...DaPaintTypography.labelMedium,
   },
-  toggleRow: {
+  sheetFooter: {
+    backgroundColor: DaPaintColors.surface,
+    borderTopColor: DaPaintButtons.faq.border,
+    borderTopWidth: 1,
+    flexDirection: 'row',
+    gap: DaPaintSpacing.sm,
+    paddingHorizontal: DaPaintSpacing.lg,
+    paddingVertical: DaPaintSpacing.md,
+  },
+  sheetHeader: {
+    alignItems: 'center',
+    backgroundColor: DaPaintColors.surface,
+    borderBottomColor: DaPaintButtons.faq.border,
+    borderBottomWidth: 1,
     flexDirection: 'row',
     justifyContent: 'space-between',
+    paddingBottom: DaPaintSpacing.headerBottom,
+    paddingHorizontal: DaPaintSpacing.lg,
+    paddingTop: DaPaintSpacing.headerTop,
+  },
+  sheetInput: {
+    backgroundColor: DaPaintButtons.faq.background,
+    borderColor: DaPaintButtons.faq.border,
+    borderRadius: DaPaintRadius.sm,
+    borderWidth: 1,
+    color: DaPaintColors.textPrimary,
+    padding: DaPaintSpacing.sm,
+  },
+  sheetLabel: {
+    ...DaPaintTypography.labelSmall,
+    color: DaPaintColors.textPrimary,
+    marginBottom: DaPaintSpacing.xxs,
+    marginTop: DaPaintSpacing.sm,
+  },
+  sheetPrimaryButton: {
     alignItems: 'center',
+    backgroundColor: DaPaintColors.primaryDeep,
+    borderRadius: DaPaintRadius.sm,
+    flex: 1,
     paddingVertical: DaPaintSpacing.sm,
-    borderBottomWidth: 1,
-    borderBottomColor: DaPaintButtons.faq.border,
+  },
+  sheetPrimaryText: {
+    color: '#FFFFFF',
+    ...DaPaintTypography.labelMedium,
+  },
+  sheetScrollContent: {
+    paddingBottom: DaPaintSpacing.xxl,
+    paddingHorizontal: DaPaintSpacing.lg,
+    paddingTop: DaPaintSpacing.md,
+  },
+  sheetSecondaryButton: {
+    alignItems: 'center',
+    backgroundColor: DaPaintButtons.faq.background,
+    borderColor: DaPaintButtons.faq.border,
+    borderRadius: DaPaintRadius.sm,
+    borderWidth: 1,
+    flex: 1,
+    paddingVertical: DaPaintSpacing.sm,
+  },
+  sheetSecondaryText: {
+    color: DaPaintButtons.faq.text,
+    ...DaPaintTypography.labelMedium,
+  },
+  sheetTextArea: {
+    minHeight: 120,
+    textAlignVertical: 'top',
+  },
+  sheetTitle: {
+    ...DaPaintTypography.displayMedium,
+    color: DaPaintColors.textPrimary,
+  },
+  sheetTouchGuard: {
+    flex: 1,
+  },
+  statCard: {
+    alignItems: 'center',
+    backgroundColor: DaPaintButtons.faq.background,
+    borderColor: DaPaintButtons.faq.border,
+    borderRadius: DaPaintRadius.md,
+    borderWidth: 1,
+    flex: 1,
+    minWidth: '48%',
+    paddingHorizontal: DaPaintSpacing.md,
+    paddingVertical: DaPaintSpacing.md,
+  },
+  statLabel: {
+    ...DaPaintTypography.bodySmall,
+    color: DaPaintColors.textTertiary,
+    textAlign: 'center',
+  },
+  statValue: {
+    ...DaPaintTypography.displaySmall,
+    color: DaPaintColors.textPrimary,
+    marginBottom: DaPaintSpacing.xxs,
+  },
+  statsGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: DaPaintSpacing.sm,
+    justifyContent: 'space-between',
+  },
+  statsSection: {
+    marginBottom: DaPaintSpacing.xl,
+  },
+  subscriberCount: {
+    color: DaPaintColors.textTertiary,
+    ...DaPaintTypography.bodySmall,
   },
   toggleLabel: {
     color: DaPaintColors.textPrimary,
     ...DaPaintTypography.bodyMedium,
+  },
+  toggleRow: {
+    alignItems: 'center',
+    borderBottomColor: DaPaintButtons.faq.border,
+    borderBottomWidth: 1,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    paddingVertical: DaPaintSpacing.sm,
+  },
+  userInfoContainer: {
+    alignItems: 'center',
+    marginBottom: DaPaintSpacing.md,
+  },
+  username: {
+    color: DaPaintColors.textSecondary,
+    ...DaPaintTypography.bodyMedium,
+    marginBottom: DaPaintSpacing.xxs,
   },
 });

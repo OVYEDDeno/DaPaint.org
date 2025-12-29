@@ -1,5 +1,12 @@
 // constants/theme.ts
-import { DaPaintColors, DaPaintTypography, DaPaintRadius, DaPaintSpacing, DaPaintShadows, DaPaintButtons } from "./DaPaintDesign";
+import {
+  DaPaintColors,
+  DaPaintTypography,
+  DaPaintRadius,
+  DaPaintSpacing,
+  DaPaintShadows,
+  DaPaintButtons,
+} from './DaPaintDesign';
 
 export const theme = {
   colors: DaPaintColors,

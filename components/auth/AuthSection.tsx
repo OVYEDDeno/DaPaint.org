@@ -1,3 +1,4 @@
+import { useRouter } from 'expo-router';
 import React, { useEffect, useState } from 'react';
 import {
   View,
@@ -11,11 +12,7 @@ import {
   TextInput,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useRouter } from 'expo-router';
-import { supabase } from '../../lib/supabase';
-import { getSession, signOut, signIn } from '../../lib/api/auth';
-import { userDataManager } from '../../lib/UserDataManager';
-import logger from '../../lib/logger';
+
 import {
   DaPaintColors,
   DaPaintSpacing,
@@ -24,10 +21,15 @@ import {
   DaPaintTypography,
   DaPaintPhysics,
 } from '../../constants/DaPaintDesign';
+import { getSession, signOut, signIn } from '../../lib/api/auth';
+import logger from '../../lib/logger';
+import { supabase } from '../../lib/supabase';
+import { userDataManager } from '../../lib/UserDataManager';
 import { getKeyboardDismissHandler } from '../../lib/webFocusGuard';
-import { UsernameInputSection } from './UsernameInputSection';
-import { PasswordInputSection } from './PasswordInputSection';
+
 import { AlternativeSignInSection } from './AlternativeSignInSection';
+import { PasswordInputSection } from './PasswordInputSection';
+import { UsernameInputSection } from './UsernameInputSection';
 
 const BASE_BOTTOM_PADDING = Platform.OS === 'ios' ? 20 : 16;
 const MAX_KEYBOARD_LIFT = 80;
@@ -47,7 +49,7 @@ type AuthMode = 'username' | 'password' | 'forgot-password' | 'email-phone';
 export default function AuthSection({ keyboardOffset }: AuthSectionProps) {
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  
+
   const [authMode, setAuthMode] = useState<AuthMode>('username');
   const [identifier, setIdentifier] = useState('');
   const [password, setPassword] = useState('');
@@ -56,8 +58,10 @@ export default function AuthSection({ keyboardOffset }: AuthSectionProps) {
   const [sessionChecked, setSessionChecked] = useState(false);
   const [isChecking, setIsChecking] = useState(false);
   const [isAvailable, setIsAvailable] = useState<boolean | null>(null);
-  const [formatValidationError, setFormatValidationError] = useState<string | null>(null);
-  
+  const [formatValidationError, setFormatValidationError] = useState<
+    string | null
+  >(null);
+
   const [fadeAnim] = useState(new Animated.Value(1));
   const [slideAnim] = useState(new Animated.Value(0));
 
@@ -82,7 +86,6 @@ export default function AuthSection({ keyboardOffset }: AuthSectionProps) {
 
           await userDataManager.preloadUserData();
           router.replace('/(tabs)/feed');
-          return;
         }
       } catch (error) {
         logger.error('Session check error:', error);
@@ -144,7 +147,10 @@ export default function AuthSection({ keyboardOffset }: AuthSectionProps) {
       const signInResult = await signIn(emailForAuth, password);
 
       if (!signInResult.success) {
-        Alert.alert('Login Failed', signInResult.error?.message || 'Invalid credentials.');
+        Alert.alert(
+          'Login Failed',
+          signInResult.error?.message || 'Invalid credentials.'
+        );
         setLoading(false);
         return;
       }
@@ -183,7 +189,9 @@ export default function AuthSection({ keyboardOffset }: AuthSectionProps) {
         userDataManager.preloadUserData();
       } else {
         setIsAvailable(true);
-        router.push(`/(auth)/signup?username=${encodeURIComponent(identifier.trim().toLowerCase())}`);
+        router.push(
+          `/(auth)/signup?username=${encodeURIComponent(identifier.trim().toLowerCase())}`
+        );
       }
     } catch (err) {
       logger.error('Username check error:', err);
@@ -216,7 +224,9 @@ export default function AuthSection({ keyboardOffset }: AuthSectionProps) {
           setResolvedEmail(userData.email);
           setAuthMode('password');
         } else {
-          router.push(`/(auth)/signup?email=${encodeURIComponent(identifier.trim().toLowerCase())}`);
+          router.push(
+            `/(auth)/signup?email=${encodeURIComponent(identifier.trim().toLowerCase())}`
+          );
         }
       } else {
         const cleanPhone = identifier.trim().replace(/[\s\-\(\)]/g, '');
@@ -231,9 +241,11 @@ export default function AuthSection({ keyboardOffset }: AuthSectionProps) {
           setResolvedEmail(users[0]?.email || '');
           setAuthMode('password');
         } else {
-          Alert.alert('Multiple Accounts', 'Multiple accounts found. Please sign in with email.');
+          Alert.alert(
+            'Multiple Accounts',
+            'Multiple accounts found. Please sign in with email.'
+          );
           setLoading(false);
-          return;
         }
       }
     } catch (err) {
@@ -246,7 +258,10 @@ export default function AuthSection({ keyboardOffset }: AuthSectionProps) {
 
   const handleForgotPassword = async () => {
     if (!identifier.trim()) {
-      Alert.alert('Error', 'Please enter your username, email, or phone number');
+      Alert.alert(
+        'Error',
+        'Please enter your username, email, or phone number'
+      );
       return;
     }
 
@@ -277,7 +292,7 @@ export default function AuthSection({ keyboardOffset }: AuthSectionProps) {
           if (byPhone) {
             userEmail = byPhone.email;
           } else {
-            const queryParam = emailRegex.test(identifier.trim()) 
+            const queryParam = emailRegex.test(identifier.trim())
               ? `email=${encodeURIComponent(identifier.trim())}`
               : `username=${encodeURIComponent(identifier.trim())}`;
             router.push(`/(auth)/signup?${queryParam}`);
@@ -323,7 +338,11 @@ export default function AuthSection({ keyboardOffset }: AuthSectionProps) {
   const dismissKeyboard = getKeyboardDismissHandler();
 
   return (
-    <Pressable onPress={dismissKeyboard} accessible={false} style={styles.touchGuard}>
+    <Pressable
+      onPress={dismissKeyboard}
+      accessible={false}
+      style={styles.touchGuard}
+    >
       <KeyboardAvoidingView
         style={styles.kav}
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
@@ -333,8 +352,8 @@ export default function AuthSection({ keyboardOffset }: AuthSectionProps) {
           <Animated.View
             style={[
               styles.bottomContainer,
-              { 
-                paddingBottom: basePadding, 
+              {
+                paddingBottom: basePadding,
                 marginBottom: keyboardPadding,
                 opacity: fadeAnim,
                 transform: [{ translateY: slideAnim }],
@@ -358,7 +377,9 @@ export default function AuthSection({ keyboardOffset }: AuthSectionProps) {
                     isChecking={isChecking}
                     handleCheckUsername={handleCheckUsername}
                   />
-                  <AlternativeSignInSection onEmailPhonePress={() => setAuthMode('email-phone')} />
+                  <AlternativeSignInSection
+                    onEmailPhonePress={() => setAuthMode('email-phone')}
+                  />
                 </>
               )}
 
@@ -394,7 +415,9 @@ export default function AuthSection({ keyboardOffset }: AuthSectionProps) {
                       setIdentifier('');
                     }}
                   >
-                    <Text style={styles.secondaryButtonText}>Back to Username</Text>
+                    <Text style={styles.secondaryButtonText}>
+                      Back to Username
+                    </Text>
                   </Pressable>
                 </>
               )}
@@ -418,7 +441,11 @@ export default function AuthSection({ keyboardOffset }: AuthSectionProps) {
                   </Pressable>
                   <View style={styles.actionRow}>
                     <Pressable
-                      style={[styles.button, styles.secondaryButton, styles.halfButton]}
+                      style={[
+                        styles.button,
+                        styles.secondaryButton,
+                        styles.halfButton,
+                      ]}
                       onPress={() => {
                         setAuthMode('username');
                         setPassword('');
@@ -429,10 +456,16 @@ export default function AuthSection({ keyboardOffset }: AuthSectionProps) {
                       <Text style={styles.secondaryButtonText}>Back</Text>
                     </Pressable>
                     <Pressable
-                      style={[styles.button, styles.secondaryButton, styles.halfButton]}
+                      style={[
+                        styles.button,
+                        styles.secondaryButton,
+                        styles.halfButton,
+                      ]}
                       onPress={() => setAuthMode('forgot-password')}
                     >
-                      <Text style={styles.secondaryButtonText}>Forgot Password</Text>
+                      <Text style={styles.secondaryButtonText}>
+                        Forgot Password
+                      </Text>
                     </Pressable>
                   </View>
                 </>
@@ -441,7 +474,9 @@ export default function AuthSection({ keyboardOffset }: AuthSectionProps) {
               {authMode === 'forgot-password' && (
                 <>
                   <View style={styles.inputContainer}>
-                    <Text style={styles.inputLabel}>Username, Email, or Phone</Text>
+                    <Text style={styles.inputLabel}>
+                      Username, Email, or Phone
+                    </Text>
                     <View style={styles.inputWrapper}>
                       <TextInput
                         style={styles.input}
@@ -466,7 +501,9 @@ export default function AuthSection({ keyboardOffset }: AuthSectionProps) {
                     style={[styles.button, styles.secondaryButton]}
                     onPress={() => setAuthMode('password')}
                   >
-                    <Text style={styles.secondaryButtonText}>Back to Sign In</Text>
+                    <Text style={styles.secondaryButtonText}>
+                      Back to Sign In
+                    </Text>
                   </Pressable>
                 </>
               )}
@@ -493,43 +530,54 @@ export const AuthFormSection: React.FC<AuthFormSectionProps> = ({
 };
 
 const styles = StyleSheet.create({
-  touchGuard: { flex: 1 },
-  kav: { flex: 1 },
-  container: {
-    paddingHorizontal: DaPaintSpacing.md,
-    alignItems: 'center',
+  actionRow: {
+    flexDirection: 'row',
+    gap: DaPaintSpacing.xxs,
   },
   authContainer: {
-    width: '100%',
     maxWidth: Platform.OS === 'web' ? 460 : 400,
-  },
-  sheetWrapper: {
-    flex: 1,
-    justifyContent: 'flex-end',
-    zIndex: 5,
+    width: '100%',
   },
   bottomContainer: {
-    backgroundColor: DaPaintColors.surface,
-    borderRadius: DaPaintRadius.xl,
-    paddingTop: DaPaintSpacing.sm,
-    paddingHorizontal: DaPaintSpacing.sm,
-    width: '94%',
     alignSelf: 'center',
-    maxWidth: Platform.OS === 'web' ? 460 : 420,
-    borderWidth: 1,
+    backgroundColor: DaPaintColors.surface,
     borderColor: DaPaintColors.border,
+    borderRadius: DaPaintRadius.xl,
+    borderWidth: 1,
+    maxWidth: Platform.OS === 'web' ? 460 : 420,
+    paddingHorizontal: DaPaintSpacing.sm,
+    paddingTop: DaPaintSpacing.sm,
+    width: '94%',
     zIndex: 9,
     ...DaPaintShadows.medium,
     gap: DaPaintSpacing.sm,
   },
-  termsText: {
-    ...DaPaintTypography.bodySmall,
-    color: DaPaintColors.textSecondary,
-    textAlign: 'center',
-    opacity: 0.7,
+  button: {
+    alignItems: 'center',
+    borderRadius: DaPaintRadius.sm,
+    paddingHorizontal: DaPaintSpacing.sm,
+    paddingVertical: DaPaintSpacing.xs,
+  },
+  buttonText: {
+    ...DaPaintTypography.labelLarge,
+    color: '#ffffff',
+    letterSpacing: 0.5,
+  },
+  container: {
+    alignItems: 'center',
+    paddingHorizontal: DaPaintSpacing.md,
   },
   formContainer: {
     gap: DaPaintSpacing.xs,
+  },
+  halfButton: {
+    flex: 1,
+  },
+  input: {
+    flex: 1,
+    ...DaPaintTypography.bodyLarge,
+    backgroundColor: 'transparent',
+    color: DaPaintColors.textPrimary,
   },
   inputContainer: {
     gap: DaPaintSpacing.xxs,
@@ -539,50 +587,39 @@ const styles = StyleSheet.create({
     color: DaPaintColors.textPrimary,
   },
   inputWrapper: {
-    flexDirection: 'row',
     alignItems: 'center',
-    borderWidth: 1.5,
+    backgroundColor: DaPaintColors.surfaceStrong,
     borderColor: DaPaintColors.border,
     borderRadius: DaPaintRadius.md,
-    backgroundColor: DaPaintColors.surfaceStrong,
+    borderWidth: 1.5,
+    flexDirection: 'row',
     minHeight: 48,
     paddingHorizontal: DaPaintSpacing.xs,
   },
-  input: {
-    flex: 1,
-    ...DaPaintTypography.bodyLarge,
-    color: DaPaintColors.textPrimary,
-    backgroundColor: 'transparent',
-  },
-  button: {
-    paddingVertical: DaPaintSpacing.xs,
-    paddingHorizontal: DaPaintSpacing.sm,
-    borderRadius: DaPaintRadius.sm,
-    alignItems: 'center',
-  },
+  kav: { flex: 1 },
   primaryButton: {
     backgroundColor: DaPaintColors.primaryDeep,
     ...DaPaintShadows.medium,
   },
-  buttonText: {
-    ...DaPaintTypography.labelLarge,
-    color: '#ffffff',
-    letterSpacing: 0.5,
-  },
   secondaryButton: {
     backgroundColor: 'rgba(0,92,130,0.12)',
-    borderWidth: 1,
     borderColor: 'rgba(0,92,130,0.25)',
+    borderWidth: 1,
   },
   secondaryButtonText: {
     ...DaPaintTypography.labelMedium,
     color: DaPaintColors.primaryDeep,
   },
-  actionRow: {
-    flexDirection: 'row',
-    gap: DaPaintSpacing.xxs,
-  },
-  halfButton: {
+  sheetWrapper: {
     flex: 1,
+    justifyContent: 'flex-end',
+    zIndex: 5,
   },
+  termsText: {
+    ...DaPaintTypography.bodySmall,
+    color: DaPaintColors.textSecondary,
+    opacity: 0.7,
+    textAlign: 'center',
+  },
+  touchGuard: { flex: 1 },
 });

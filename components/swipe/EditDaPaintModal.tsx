@@ -1,4 +1,5 @@
 // components/swipe/EditDaPaintModal.tsx
+import { useEffect, useState } from 'react';
 import {
   View,
   Text,
@@ -12,9 +13,11 @@ import {
   Keyboard,
   KeyboardAvoidingView,
 } from 'react-native';
-import { useEffect, useState } from 'react';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+
+import { DaPaintDatePickerTheme } from '../../constants/DaPaintDesign';
 import { theme } from '../../constants/theme';
+import { DaPaint, editDaPaint, canEditDaPaint } from '../../lib/api/dapaints';
 import { getKeyboardDismissHandler } from '../../lib/webFocusGuard';
 // Conditional import for DateTimePicker - only import on native platforms
 let DateTimePicker: any = null;
@@ -25,8 +28,6 @@ if (Platform.OS !== 'web') {
     console.warn('DateTimePicker not available:', e);
   }
 }
-import { DaPaint, editDaPaint, canEditDaPaint } from '../../lib/api/dapaints';
-import { DaPaintDatePickerTheme } from '../../constants/DaPaintDesign';
 
 type EditDaPaintModalProps = {
   visible: boolean;
@@ -83,8 +84,10 @@ export default function EditDaPaintModal({
   };
 
   useEffect(() => {
-    const showEvent = Platform.OS === 'android' ? 'keyboardDidShow' : 'keyboardWillShow';
-    const hideEvent = Platform.OS === 'android' ? 'keyboardDidHide' : 'keyboardWillHide';
+    const showEvent =
+      Platform.OS === 'android' ? 'keyboardDidShow' : 'keyboardWillShow';
+    const hideEvent =
+      Platform.OS === 'android' ? 'keyboardDidHide' : 'keyboardWillHide';
 
     const onShow = (e: any) => {
       const heightFromEvent = e?.endCoordinates?.height ?? 0;
@@ -174,11 +177,20 @@ export default function EditDaPaintModal({
     }
   };
 
-  const footerPaddingBottom = (Platform.OS === 'ios' ? 24 : 12) + keyboardOffset + insets.bottom;
+  const footerPaddingBottom =
+    (Platform.OS === 'ios' ? 24 : 12) + keyboardOffset + insets.bottom;
 
   return (
-    <Modal visible={visible} animationType="slide" presentationStyle="pageSheet">
-      <Pressable onPress={dismissKeyboard} accessible={false} style={styles.touchGuard}>
+    <Modal
+      visible={visible}
+      animationType="slide"
+      presentationStyle="pageSheet"
+    >
+      <Pressable
+        onPress={dismissKeyboard}
+        accessible={false}
+        style={styles.touchGuard}
+      >
         <KeyboardAvoidingView
           style={styles.container}
           behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
@@ -205,7 +217,7 @@ export default function EditDaPaintModal({
                 <TextInput
                   style={styles.input}
                   value={formData.dapaint}
-                  onChangeText={(text) => updateField('dapaint', text)}
+                  onChangeText={text => updateField('dapaint', text)}
                   placeholder="e.g., 100 Pushups in 10 minutes"
                   placeholderTextColor={theme.colors.textTertiary}
                   multiline
@@ -213,11 +225,15 @@ export default function EditDaPaintModal({
               </View>
 
               <View style={styles.inputGroup}>
-                <Text style={styles.label}>How is the winner determined? *</Text>
+                <Text style={styles.label}>
+                  How is the winner determined? *
+                </Text>
                 <TextInput
                   style={styles.input}
                   value={formData.howWinnerIsDetermined}
-                  onChangeText={(text) => updateField('howWinnerIsDetermined', text)}
+                  onChangeText={text =>
+                    updateField('howWinnerIsDetermined', text)
+                  }
                   placeholder="e.g., First to finish"
                   placeholderTextColor={theme.colors.textTertiary}
                   multiline
@@ -229,7 +245,7 @@ export default function EditDaPaintModal({
                 <TextInput
                   style={[styles.input, styles.textArea]}
                   value={formData.description}
-                  onChangeText={(text) => updateField('description', text)}
+                  onChangeText={text => updateField('description', text)}
                   placeholder="Additional details..."
                   placeholderTextColor={theme.colors.textTertiary}
                   multiline
@@ -242,7 +258,7 @@ export default function EditDaPaintModal({
                 <TextInput
                   style={[styles.input, styles.textArea]}
                   value={formData.rulesOfDapaint}
-                  onChangeText={(text) => updateField('rulesOfDapaint', text)}
+                  onChangeText={text => updateField('rulesOfDapaint', text)}
                   placeholder="Rules of the DaPaint..."
                   placeholderTextColor={theme.colors.textTertiary}
                   multiline
@@ -255,7 +271,7 @@ export default function EditDaPaintModal({
                 <TextInput
                   style={styles.input}
                   value={formData.streetAddress}
-                  onChangeText={(text) => updateField('streetAddress', text)}
+                  onChangeText={text => updateField('streetAddress', text)}
                   placeholder="123 Main St"
                   placeholderTextColor={theme.colors.textTertiary}
                 />
@@ -266,7 +282,7 @@ export default function EditDaPaintModal({
                 <TextInput
                   style={styles.input}
                   value={formData.city}
-                  onChangeText={(text) => updateField('city', text)}
+                  onChangeText={text => updateField('city', text)}
                   placeholder="Miami"
                   placeholderTextColor={theme.colors.textTertiary}
                 />
@@ -277,7 +293,9 @@ export default function EditDaPaintModal({
                 <TextInput
                   style={styles.input}
                   value={formData.postalCode}
-                  onChangeText={(text) => updateField('postalCode', text.toUpperCase())}
+                  onChangeText={text =>
+                    updateField('postalCode', text.toUpperCase())
+                  }
                   placeholder="e.g., 90210 or SW1A 1AA"
                   placeholderTextColor={theme.colors.textTertiary}
                   keyboardType="default"
@@ -295,14 +313,14 @@ export default function EditDaPaintModal({
                   <TextInput
                     style={styles.input}
                     value={formatDate(formData.date)}
-                    onChangeText={(text) => {
+                    onChangeText={text => {
                       // Parse MM/DD/YYYY format
                       const parts = text.split('/');
                       if (parts.length === 3) {
                         const year = parseInt(parts[2] || '0');
                         const month = parseInt(parts[0] || '0') - 1;
                         const day = parseInt(parts[1] || '0');
-                        
+
                         if (!isNaN(year) && !isNaN(month) && !isNaN(day)) {
                           const date = new Date(year, month, day);
                           if (!isNaN(date.getTime())) {
@@ -320,7 +338,9 @@ export default function EditDaPaintModal({
                   <>
                     <Pressable onPress={() => setShowDatePicker(true)}>
                       <View style={[styles.input, { pointerEvents: 'none' }]}>
-                        <Text style={styles.inputText}>{formatDate(formData.date)}</Text>
+                        <Text style={styles.inputText}>
+                          {formatDate(formData.date)}
+                        </Text>
                       </View>
                     </Pressable>
                     {showDatePicker && DateTimePicker && (
@@ -328,7 +348,9 @@ export default function EditDaPaintModal({
                         <DateTimePicker
                           value={formData.date}
                           mode="date"
-                          display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+                          display={
+                            Platform.OS === 'ios' ? 'spinner' : 'default'
+                          }
                           onChange={onDateChange}
                           minimumDate={new Date()}
                           themeVariant={DaPaintDatePickerTheme.themeVariant}
@@ -340,7 +362,7 @@ export default function EditDaPaintModal({
                   </>
                 )}
               </View>
-              
+
               <View style={styles.inputGroup}>
                 <Text style={styles.label}>Time *</Text>
                 {Platform.OS === 'web' ? (
@@ -348,18 +370,23 @@ export default function EditDaPaintModal({
                   <TextInput
                     style={styles.input}
                     value={formatTime(formData.time)}
-                    onChangeText={(text) => {
+                    onChangeText={text => {
                       // Parse HH:MM AM/PM format (simplified)
                       const date = new Date();
                       const timeParts = text.match(/(\d+):(\d+)\s*(AM|PM)/i);
-                      if (timeParts && timeParts[1] && timeParts[2] && timeParts[3]) {
+                      if (
+                        timeParts &&
+                        timeParts[1] &&
+                        timeParts[2] &&
+                        timeParts[3]
+                      ) {
                         let hours = parseInt(timeParts[1]);
                         const minutes = parseInt(timeParts[2]);
                         const period = timeParts[3].toUpperCase();
-                        
+
                         if (period === 'PM' && hours < 12) hours += 12;
                         if (period === 'AM' && hours === 12) hours = 0;
-                        
+
                         date.setHours(hours);
                         date.setMinutes(minutes);
                         updateField('time', date);
@@ -373,7 +400,9 @@ export default function EditDaPaintModal({
                   <>
                     <Pressable onPress={() => setShowTimePicker(true)}>
                       <View style={[styles.input, { pointerEvents: 'none' }]}>
-                        <Text style={styles.inputText}>{formatTime(formData.time)}</Text>
+                        <Text style={styles.inputText}>
+                          {formatTime(formData.time)}
+                        </Text>
                       </View>
                     </Pressable>
                     {showTimePicker && DateTimePicker && (
@@ -381,7 +410,9 @@ export default function EditDaPaintModal({
                         <DateTimePicker
                           value={formData.time}
                           mode="time"
-                          display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+                          display={
+                            Platform.OS === 'ios' ? 'spinner' : 'default'
+                          }
                           onChange={onTimeChange}
                           themeVariant={DaPaintDatePickerTheme.themeVariant}
                           textColor={DaPaintDatePickerTheme.textColor}
@@ -392,7 +423,7 @@ export default function EditDaPaintModal({
                   </>
                 )}
               </View>
-              
+
               <View style={styles.inputGroup}>
                 <Text style={styles.label}>Ticket Price</Text>
                 <View style={styles.priceInputContainer}>
@@ -400,7 +431,7 @@ export default function EditDaPaintModal({
                   <TextInput
                     style={[styles.input, styles.priceInput]}
                     value={formData.ticketPrice}
-                    onChangeText={(text) => updateField('ticketPrice', text)}
+                    onChangeText={text => updateField('ticketPrice', text)}
                     placeholder="0.00"
                     placeholderTextColor={theme.colors.textTertiary}
                     keyboardType="decimal-pad"
@@ -414,7 +445,9 @@ export default function EditDaPaintModal({
                   <TextInput
                     style={styles.input}
                     value={formData.maxParticipants.toString()}
-                    onChangeText={(text) => updateField('maxParticipants', parseInt(text) || 2)}
+                    onChangeText={text =>
+                      updateField('maxParticipants', parseInt(text) || 2)
+                    }
                     placeholder="e.g., 10"
                     placeholderTextColor={theme.colors.textTertiary}
                     keyboardType="number-pad"
@@ -423,12 +456,17 @@ export default function EditDaPaintModal({
               )}
             </ScrollView>
 
-            <View style={[styles.footer, { paddingBottom: footerPaddingBottom }]}>
+            <View
+              style={[styles.footer, { paddingBottom: footerPaddingBottom }]}
+            >
               <Pressable style={styles.cancelButton} onPress={onClose}>
                 <Text style={styles.cancelButtonText}>Cancel</Text>
               </Pressable>
               <Pressable
-                style={[styles.saveButton, loading && styles.saveButtonDisabled]}
+                style={[
+                  styles.saveButton,
+                  loading && styles.saveButtonDisabled,
+                ]}
                 onPress={handleSave}
                 disabled={loading}
               >
@@ -445,143 +483,143 @@ export default function EditDaPaintModal({
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: 'transparent',
-  },
-  inner: {
-    flex: 1,
-    backgroundColor: 'transparent',
-  },
-  touchGuard: {
-    flex: 1,
-  },
-  header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
+  cancelButton: {
     alignItems: 'center',
-    padding: 24,
-    paddingTop: theme.space.headerTop,
-    paddingBottom: theme.space.headerBottom,
-    borderBottomWidth: 1,
-    borderBottomColor: theme.colors.border,
-    backgroundColor: 'rgba(255,255,255,0.95)',
+    borderColor: theme.colors.border,
+    borderRadius: 12,
+    borderWidth: 2,
+    flex: 1,
+    minHeight: 48,
+    padding: 18,
   },
-  title: {
-    fontSize: 28,
-    fontWeight: '700',
+  cancelButtonText: {
     color: theme.colors.textPrimary,
+    fontSize: 16,
+    fontWeight: '600',
   },
   closeButton: {
-    fontSize: 24,
     color: theme.colors.textPrimary,
+    fontSize: 24,
     fontWeight: '300',
+  },
+  container: {
+    backgroundColor: 'transparent',
+    flex: 1,
   },
   content: {
     flex: 1,
-  },
-  scrollContent: {
-    padding: 24,
-    paddingTop: 32,
-    paddingBottom: 100,
-  },
-  inputGroup: {
-    marginBottom: 24,
-  },
-  label: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: theme.colors.textPrimary,
-    marginBottom: 8,
-  },
-  input: {
-    borderWidth: 1,
-    borderColor: theme.colors.border,
-    borderRadius: 12,
-    padding: 16,
-    fontSize: 16,
-    backgroundColor: theme.colors.surface,
-    color: theme.colors.textPrimary,
-    minHeight: 48,
-  },
-  inputText: {
-    fontSize: 16,
-    color: theme.colors.textPrimary,
-  },
-  textArea: {
-    height: 100,
-    textAlignVertical: 'top',
-  },
-  dateTimePicker: {
-    backgroundColor: 'transparent',
-    marginTop: 24,
-    borderRadius: 16,
-    alignItems: 'center',
   },
   datePickerWrapper: {
     alignItems: 'center',
     justifyContent: 'center',
   },
-  priceInputContainer: {
-    flexDirection: 'row',
+  dateTimePicker: {
     alignItems: 'center',
-    borderWidth: 1,
-    borderColor: theme.colors.border,
-    borderRadius: 12,
-    backgroundColor: theme.colors.surface,
-  },
-  pricePrefix: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: theme.colors.textPrimary,
-    paddingLeft: 16,
-  },
-  priceInput: {
-    flex: 1,
-    borderWidth: 0,
     backgroundColor: 'transparent',
+    borderRadius: 16,
+    marginTop: 24,
   },
   footer: {
-    position: 'absolute',
+    backgroundColor: theme.colors.surface,
+    borderTopColor: theme.colors.border,
+    borderTopWidth: 1,
     bottom: 0,
-    left: 0,
-    right: 0,
     flexDirection: 'row',
+    gap: 12,
+    left: 0,
     padding: 16,
     paddingTop: 16,
-    gap: 12,
-    borderTopWidth: 1,
-    borderTopColor: theme.colors.border,
-    backgroundColor: theme.colors.surface,
+    position: 'absolute',
+    right: 0,
   },
-  cancelButton: {
-    flex: 1,
-    padding: 18,
-    borderRadius: 12,
-    borderWidth: 2,
-    borderColor: theme.colors.border,
+  header: {
     alignItems: 'center',
-    minHeight: 48,
+    backgroundColor: 'rgba(255,255,255,0.95)',
+    borderBottomColor: theme.colors.border,
+    borderBottomWidth: 1,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    padding: 24,
+    paddingBottom: theme.space.headerBottom,
+    paddingTop: theme.space.headerTop,
   },
-  cancelButtonText: {
-    fontSize: 16,
-    fontWeight: '600',
+  inner: {
+    backgroundColor: 'transparent',
+    flex: 1,
+  },
+  input: {
+    backgroundColor: theme.colors.surface,
+    borderColor: theme.colors.border,
+    borderRadius: 12,
+    borderWidth: 1,
     color: theme.colors.textPrimary,
+    fontSize: 16,
+    minHeight: 48,
+    padding: 16,
+  },
+  inputGroup: {
+    marginBottom: 24,
+  },
+  inputText: {
+    color: theme.colors.textPrimary,
+    fontSize: 16,
+  },
+  label: {
+    color: theme.colors.textPrimary,
+    fontSize: 14,
+    fontWeight: '600',
+    marginBottom: 8,
+  },
+  priceInput: {
+    backgroundColor: 'transparent',
+    borderWidth: 0,
+    flex: 1,
+  },
+  priceInputContainer: {
+    alignItems: 'center',
+    backgroundColor: theme.colors.surface,
+    borderColor: theme.colors.border,
+    borderRadius: 12,
+    borderWidth: 1,
+    flexDirection: 'row',
+  },
+  pricePrefix: {
+    color: theme.colors.textPrimary,
+    fontSize: 18,
+    fontWeight: '600',
+    paddingLeft: 16,
   },
   saveButton: {
-    flex: 2,
-    padding: 18,
-    borderRadius: 12,
-    backgroundColor: theme.colors.primaryDeep,
     alignItems: 'center',
+    backgroundColor: theme.colors.primaryDeep,
+    borderRadius: 12,
+    flex: 2,
     minHeight: 48,
+    padding: 18,
   },
   saveButtonDisabled: {
     opacity: 0.5,
   },
   saveButtonText: {
+    color: '#FFFFFF',
     fontSize: 16,
     fontWeight: '600',
-    color: '#FFFFFF',
+  },
+  scrollContent: {
+    padding: 24,
+    paddingBottom: 100,
+    paddingTop: 32,
+  },
+  textArea: {
+    height: 100,
+    textAlignVertical: 'top',
+  },
+  title: {
+    color: theme.colors.textPrimary,
+    fontSize: 28,
+    fontWeight: '700',
+  },
+  touchGuard: {
+    flex: 1,
   },
 });

@@ -1,8 +1,8 @@
 // lib/api/users.ts
 // User profile and stats-related API functions
 
-import { supabase } from '../supabase';
 import logger from '../logger';
+import { supabase } from '../supabase';
 import { userDataManager } from '../UserDataManager';
 
 /**
@@ -64,7 +64,9 @@ export interface PublicProfile {
  */
 export async function getCurrentUserProfile(): Promise<UserProfile | null> {
   try {
-    const { data: { user } } = await supabase.auth.getUser();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
     if (!user) return null;
 
     // Use the user data manager for caching
@@ -79,7 +81,9 @@ export async function getCurrentUserProfile(): Promise<UserProfile | null> {
 /**
  * Get a public profile by username
  */
-export async function getPublicProfile(username: string): Promise<PublicProfile | null> {
+export async function getPublicProfile(
+  username: string
+): Promise<PublicProfile | null> {
   try {
     const { data, error } = await supabase
       .from('users')
@@ -97,12 +101,14 @@ export async function getPublicProfile(username: string): Promise<PublicProfile 
     logger.error('Error fetching public profile:', error);
     return null;
   }
-}/**
+} /**
  * Update current user's profile
  */
 export async function updateUserProfile(updates: Partial<UserProfile>) {
   try {
-    const { data: { user } } = await supabase.auth.getUser();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
     if (!user) throw new Error('No user logged in');
 
     const { data, error } = await supabase
@@ -116,7 +122,7 @@ export async function updateUserProfile(updates: Partial<UserProfile>) {
 
     // Update cache
     userDataManager.updateCachedUserData(updates);
-    
+
     return data as UserProfile;
   } catch (error) {
     logger.error('Error updating profile:', error);
@@ -129,7 +135,9 @@ export async function updateUserProfile(updates: Partial<UserProfile>) {
  */
 export async function updateLastActive() {
   try {
-    const { data: { user } } = await supabase.auth.getUser();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
     if (!user) return;
 
     await supabase
@@ -146,7 +154,9 @@ export async function updateLastActive() {
  */
 export async function recordWin() {
   try {
-    const { data: { user } } = await supabase.auth.getUser();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
     if (!user) throw new Error('No user logged in');
 
     // Get current stats
@@ -176,7 +186,9 @@ export async function recordWin() {
  */
 export async function recordLoss() {
   try {
-    const { data: { user } } = await supabase.auth.getUser();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
     if (!user) throw new Error('No user logged in');
 
     // Get current stats
@@ -192,7 +204,8 @@ export async function recordLoss() {
       current_winstreak: 0, // Reset win streak
       last_active_at: new Date().toISOString(),
       // Auto-unlock 10x if lossstreak >= 8
-      dapaint_10x_unlocked: newLossStreak >= 8 ? true : profile.dapaint_10x_unlocked,
+      dapaint_10x_unlocked:
+        newLossStreak >= 8 ? true : profile.dapaint_10x_unlocked,
     };
 
     return await updateUserProfile(updates);
@@ -237,7 +250,9 @@ export async function unlockDaPaintAds() {
 /**
  * Get top users by win streak (leaderboard)
  */
-export async function getTopWinStreaks(limit: number = 10): Promise<PublicProfile[]> {
+export async function getTopWinStreaks(
+  limit: number = 10
+): Promise<PublicProfile[]> {
   try {
     const { data, error } = await supabase
       .from('users')
@@ -253,7 +268,7 @@ export async function getTopWinStreaks(limit: number = 10): Promise<PublicProfil
     logger.error('Error fetching leaderboard:', error);
     return [];
   }
-}/**
+} /**
  * Get top users by total wins
  */
 export async function getTopWins(limit: number = 10): Promise<PublicProfile[]> {
@@ -276,7 +291,10 @@ export async function getTopWins(limit: number = 10): Promise<PublicProfile[]> {
 /**
  * Search users by username or display name
  */
-export async function searchUsers(query: string, limit: number = 10): Promise<PublicProfile[]> {
+export async function searchUsers(
+  query: string,
+  limit: number = 10
+): Promise<PublicProfile[]> {
   try {
     const { data, error } = await supabase
       .from('users')

@@ -16,7 +16,7 @@ const storageAdapter = {
     if (typeof window === 'undefined') {
       return memoryStorage[key] || null;
     }
-    
+
     // Handle web platform
     if (Platform.OS === 'web') {
       try {
@@ -25,7 +25,7 @@ const storageAdapter = {
         return memoryStorage[key] || null;
       }
     }
-    
+
     // Handle native platforms - lazy load AsyncStorage
     try {
       const module = await import('@react-native-async-storage/async-storage');
@@ -35,14 +35,14 @@ const storageAdapter = {
       return memoryStorage[key] || null;
     }
   },
-  
+
   setItem: async (key: string, value: string) => {
     // Handle SSR
     if (typeof window === 'undefined') {
       memoryStorage[key] = value;
       return;
     }
-    
+
     // Handle web platform
     if (Platform.OS === 'web') {
       try {
@@ -53,7 +53,7 @@ const storageAdapter = {
         return;
       }
     }
-    
+
     // Handle native platforms - lazy load AsyncStorage
     try {
       const module = await import('@react-native-async-storage/async-storage');
@@ -63,14 +63,14 @@ const storageAdapter = {
       memoryStorage[key] = value;
     }
   },
-  
+
   removeItem: async (key: string) => {
     // Handle SSR
     if (typeof window === 'undefined') {
       delete memoryStorage[key];
       return;
     }
-    
+
     // Handle web platform
     if (Platform.OS === 'web') {
       try {
@@ -81,7 +81,7 @@ const storageAdapter = {
         return;
       }
     }
-    
+
     // Handle native platforms - lazy load AsyncStorage
     try {
       const module = await import('@react-native-async-storage/async-storage');
@@ -90,7 +90,7 @@ const storageAdapter = {
     } catch {
       delete memoryStorage[key];
     }
-  }
+  },
 };
 
 export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
@@ -98,6 +98,6 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
     storage: storageAdapter,
     autoRefreshToken: true,
     persistSession: true,
-    detectSessionInUrl: Platform.OS === 'web' ? true : false,
+    detectSessionInUrl: Platform.OS === 'web',
   },
 });

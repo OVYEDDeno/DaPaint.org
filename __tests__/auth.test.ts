@@ -1,5 +1,11 @@
 // __tests__/auth.test.ts
-import { signUp, signIn, signOut, getSession, isAuthenticated } from '../lib/api/auth';
+import {
+  signUp,
+  signIn,
+  signOut,
+  getSession,
+  isAuthenticated,
+} from '../lib/api/auth';
 
 jest.mock('../lib/supabase', () => ({
   supabase: {
@@ -37,12 +43,12 @@ describe('Authentication API', () => {
           email: 'test@example.com',
         },
       };
-      
+
       (mockSupabase.auth.signUp as jest.Mock).mockResolvedValue({
         data: mockAuthData,
         error: null,
       });
-      
+
       (mockSupabase.from as jest.Mock).mockReturnValue({
         select: jest.fn().mockReturnThis(),
         eq: jest.fn().mockReturnThis(),
@@ -50,7 +56,11 @@ describe('Authentication API', () => {
         insert: jest.fn().mockResolvedValue({ error: null }),
       });
 
-      const result = await signUp('test@example.com', 'password123', 'testuser');
+      const result = await signUp(
+        'test@example.com',
+        'password123',
+        'testuser'
+      );
 
       expect(result.success).toBe(true);
       expect(result.userId).toBe('test-user-id');
@@ -71,7 +81,11 @@ describe('Authentication API', () => {
         error: { message: 'Email already exists', status: 422 },
       });
 
-      const result = await signUp('test@example.com', 'password123', 'testuser');
+      const result = await signUp(
+        'test@example.com',
+        'password123',
+        'testuser'
+      );
 
       expect(result.success).toBe(false);
       expect(result.error).toBeDefined();
@@ -85,20 +99,26 @@ describe('Authentication API', () => {
           email: 'test@example.com',
         },
       };
-      
+
       (mockSupabase.auth.signUp as jest.Mock).mockResolvedValue({
         data: mockAuthData,
         error: null,
       });
-      
+
       (mockSupabase.from as jest.Mock).mockReturnValue({
         select: jest.fn().mockReturnThis(),
         eq: jest.fn().mockReturnThis(),
         single: jest.fn().mockResolvedValue({ data: null }), // No existing user
-        insert: jest.fn().mockResolvedValue({ error: { message: 'DB Error', code: '23505' } }),
+        insert: jest
+          .fn()
+          .mockResolvedValue({ error: { message: 'DB Error', code: '23505' } }),
       });
 
-      const result = await signUp('test@example.com', 'password123', 'testuser');
+      const result = await signUp(
+        'test@example.com',
+        'password123',
+        'testuser'
+      );
 
       expect(result.success).toBe(false);
       expect(result.error).toBeDefined();
@@ -114,12 +134,12 @@ describe('Authentication API', () => {
           email: 'test@example.com',
         },
       };
-      
+
       (mockSupabase.auth.signInWithPassword as jest.Mock).mockResolvedValue({
         data: mockAuthData,
         error: null,
       });
-      
+
       (mockSupabase.from as jest.Mock).mockReturnValue({
         select: jest.fn().mockReturnThis(),
         eq: jest.fn().mockReturnThis(),
@@ -156,17 +176,19 @@ describe('Authentication API', () => {
           user_metadata: { display_name: 'Test User' },
         },
       };
-      
+
       (mockSupabase.auth.signInWithPassword as jest.Mock).mockResolvedValue({
         data: mockAuthData,
         error: null,
       });
-      
+
       (mockSupabase.from as jest.Mock)
         .mockReturnValueOnce({
           select: jest.fn().mockReturnThis(),
           eq: jest.fn().mockReturnThis(),
-          single: jest.fn().mockResolvedValue({ data: null, error: 'User not found' }),
+          single: jest
+            .fn()
+            .mockResolvedValue({ data: null, error: 'User not found' }),
         })
         .mockReturnValueOnce({
           insert: jest.fn().mockResolvedValue({ error: null }),
@@ -206,7 +228,7 @@ describe('Authentication API', () => {
   describe('getSession', () => {
     it('should return session when available', async () => {
       const mockSession = { user: { id: 'test-user-id' } };
-      
+
       (mockSupabase.auth.getSession as jest.Mock).mockResolvedValue({
         data: { session: mockSession },
         error: null,

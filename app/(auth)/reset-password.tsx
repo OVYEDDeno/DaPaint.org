@@ -1,4 +1,5 @@
 // app/(auth)/reset-password.tsx
+import { useRouter } from 'expo-router';
 import React, { useState } from 'react';
 import {
   View,
@@ -10,9 +11,7 @@ import {
   Platform,
   KeyboardAvoidingView,
 } from 'react-native';
-import { useRouter } from 'expo-router';
-import { supabase } from '../../lib/supabase';
-import logger from '../../lib/logger';
+
 import {
   DaPaintColors,
   DaPaintSpacing,
@@ -20,6 +19,8 @@ import {
   DaPaintShadows,
   DaPaintTypography,
 } from '../../constants/DaPaintDesign';
+import logger from '../../lib/logger';
+import { supabase } from '../../lib/supabase';
 
 export default function ResetPasswordScreen() {
   const router = useRouter();
@@ -56,16 +57,12 @@ export default function ResetPasswordScreen() {
         return;
       }
 
-      Alert.alert(
-        'Success',
-        'Your password has been updated successfully.',
-        [
-          {
-            text: 'OK',
-            onPress: () => router.replace('/(tabs)/feed'),
-          },
-        ]
-      );
+      Alert.alert('Success', 'Your password has been updated successfully.', [
+        {
+          text: 'OK',
+          onPress: () => router.replace('/(tabs)/feed'),
+        },
+      ]);
     } catch (err) {
       logger.error('Reset password error:', err);
       Alert.alert('Error', 'An unexpected error occurred.');
@@ -126,7 +123,8 @@ export default function ResetPasswordScreen() {
             style={[
               styles.button,
               styles.primaryButton,
-              (!newPassword || !confirmPassword || loading) && styles.buttonDisabled,
+              (!newPassword || !confirmPassword || loading) &&
+                styles.buttonDisabled,
             ]}
             onPress={handleResetPassword}
             disabled={!newPassword || !confirmPassword || loading}
@@ -142,34 +140,45 @@ export default function ResetPasswordScreen() {
 }
 
 const styles = StyleSheet.create({
+  button: {
+    alignItems: 'center',
+    borderRadius: DaPaintRadius.sm,
+    marginTop: DaPaintSpacing.xs,
+    paddingHorizontal: DaPaintSpacing.md,
+    paddingVertical: DaPaintSpacing.sm,
+  },
+  buttonDisabled: {
+    opacity: 0.5,
+  },
+  buttonText: {
+    ...DaPaintTypography.labelLarge,
+    color: '#ffffff',
+    letterSpacing: 0.5,
+  },
   container: {
-    flex: 1,
     backgroundColor: DaPaintColors.bg0,
+    flex: 1,
   },
   content: {
+    alignSelf: 'center',
     flex: 1,
     justifyContent: 'center',
-    paddingHorizontal: DaPaintSpacing.lg,
     maxWidth: 460,
-    alignSelf: 'center',
+    paddingHorizontal: DaPaintSpacing.lg,
     width: '100%',
+  },
+  form: {
+    gap: DaPaintSpacing.md,
   },
   header: {
     gap: DaPaintSpacing.xxs,
     marginBottom: DaPaintSpacing.xl,
   },
-  title: {
-    ...DaPaintTypography.displayLarge,
-    color: DaPaintColors.textPrimary,
-    textAlign: 'center',
-  },
-  subtitle: {
+  input: {
+    flex: 1,
     ...DaPaintTypography.bodyLarge,
-    color: DaPaintColors.textSecondary,
-    textAlign: 'center',
-  },
-  form: {
-    gap: DaPaintSpacing.md,
+    backgroundColor: 'transparent',
+    color: DaPaintColors.textPrimary,
   },
   inputContainer: {
     gap: DaPaintSpacing.xxs,
@@ -179,38 +188,27 @@ const styles = StyleSheet.create({
     color: DaPaintColors.textPrimary,
   },
   inputWrapper: {
-    flexDirection: 'row',
     alignItems: 'center',
-    borderWidth: 1.5,
+    backgroundColor: DaPaintColors.surface,
     borderColor: DaPaintColors.border,
     borderRadius: DaPaintRadius.md,
-    backgroundColor: DaPaintColors.surface,
+    borderWidth: 1.5,
+    flexDirection: 'row',
     minHeight: 48,
     paddingHorizontal: DaPaintSpacing.xs,
-  },
-  input: {
-    flex: 1,
-    ...DaPaintTypography.bodyLarge,
-    color: DaPaintColors.textPrimary,
-    backgroundColor: 'transparent',
-  },
-  button: {
-    paddingVertical: DaPaintSpacing.sm,
-    paddingHorizontal: DaPaintSpacing.md,
-    borderRadius: DaPaintRadius.sm,
-    alignItems: 'center',
-    marginTop: DaPaintSpacing.xs,
   },
   primaryButton: {
     backgroundColor: DaPaintColors.primaryDeep,
     ...DaPaintShadows.medium,
   },
-  buttonText: {
-    ...DaPaintTypography.labelLarge,
-    color: '#ffffff',
-    letterSpacing: 0.5,
+  subtitle: {
+    ...DaPaintTypography.bodyLarge,
+    color: DaPaintColors.textSecondary,
+    textAlign: 'center',
   },
-  buttonDisabled: {
-    opacity: 0.5,
+  title: {
+    ...DaPaintTypography.displayLarge,
+    color: DaPaintColors.textPrimary,
+    textAlign: 'center',
   },
 });

@@ -19,7 +19,7 @@ jest.mock('../lib/supabase', () => ({
 }));
 
 // Mock AsyncStorage
-jest.mock('@react-native-async-storage/async-storage', () => 
+jest.mock('@react-native-async-storage/async-storage', () =>
   require('@react-native-async-storage/async-storage/jest/async-storage-mock')
 );
 
@@ -118,7 +118,7 @@ describe('UserDataManager', () => {
   describe('getUserData', () => {
     it('should return cached data when available and not forcing refresh', async () => {
       const cachedData = { id: 'user-id-123', username: 'cacheduser' };
-      
+
       // Manually set cached data
       (userDataManager as any).userData = cachedData;
       (userDataManager as any).lastFetchTime = Date.now();
@@ -179,9 +179,16 @@ describe('UserDataManager', () => {
 
   describe('updateCachedUserData', () => {
     it('should update cached user data', () => {
-      const newData = { id: 'user-id-123', username: 'updateduser', current_winstreak: 10 };
+      const newData = {
+        id: 'user-id-123',
+        username: 'updateduser',
+        current_winstreak: 10,
+      };
 
-      (userDataManager as any).userData = { id: 'user-id-123', username: 'initialuser' };
+      (userDataManager as any).userData = {
+        id: 'user-id-123',
+        username: 'initialuser',
+      };
       userDataManager.updateCachedUserData(newData);
 
       // Verify internal cache was updated by accessing private property
@@ -189,9 +196,21 @@ describe('UserDataManager', () => {
     });
 
     it('should merge with existing data', () => {
-      const initialData = { id: 'user-id-123', username: 'initialuser', current_winstreak: 5 };
-      const updateData = { current_winstreak: 10, display_name: 'Updated Name' };
-      const expected = { id: 'user-id-123', username: 'initialuser', current_winstreak: 10, display_name: 'Updated Name' };
+      const initialData = {
+        id: 'user-id-123',
+        username: 'initialuser',
+        current_winstreak: 5,
+      };
+      const updateData = {
+        current_winstreak: 10,
+        display_name: 'Updated Name',
+      };
+      const expected = {
+        id: 'user-id-123',
+        username: 'initialuser',
+        current_winstreak: 10,
+        display_name: 'Updated Name',
+      };
 
       // Manually set initial cached data
       (userDataManager as any).userData = initialData;
@@ -206,7 +225,10 @@ describe('UserDataManager', () => {
   describe('clearCache', () => {
     it('should clear cached user data', () => {
       // Manually set cached data
-      (userDataManager as any).userData = { id: 'user-id-123', username: 'testuser' };
+      (userDataManager as any).userData = {
+        id: 'user-id-123',
+        username: 'testuser',
+      };
 
       userDataManager.clearCache();
 

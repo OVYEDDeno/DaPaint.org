@@ -21,8 +21,8 @@ const getCircularReplacer = () => {
     if (value instanceof Error) {
       return { name: value.name, message: value.message, stack: value.stack };
     }
-    if (typeof value === "object" && value !== null) {
-      if (seen.has(value)) return "[Circular]";
+    if (typeof value === 'object' && value !== null) {
+      if (seen.has(value)) return '[Circular]';
       seen.add(value);
     }
     return value;
@@ -37,20 +37,25 @@ function safeStringify(value: any): string {
     try {
       return String(value);
     } catch {
-      return "[Unstringifiable]";
+      return '[Unstringifiable]';
     }
   }
 }
 
 function formatParam(param: any): string {
   if (param instanceof Error) {
-    const stack = param.stack ? `\n${param.stack}` : "";
+    const stack = param.stack ? `\n${param.stack}` : '';
     return `${param.name}: ${param.message}${stack}`.trim();
   }
-  if (typeof param === "string") return param;
-  if (typeof param === "number" || typeof param === "boolean" || typeof param === "bigint") return String(param);
-  if (param === null) return "null";
-  if (typeof param === "undefined") return "undefined";
+  if (typeof param === 'string') return param;
+  if (
+    typeof param === 'number' ||
+    typeof param === 'boolean' ||
+    typeof param === 'bigint'
+  )
+    return String(param);
+  if (param === null) return 'null';
+  if (typeof param === 'undefined') return 'undefined';
   return safeStringify(param);
 }
 
@@ -65,7 +70,7 @@ function log(level: LogLevel, message: string, ...optionalParams: any[]) {
   if (level >= CURRENT_LOG_LEVEL) {
     const timestamp = new Date().toISOString();
     const formattedParams = optionalParams.map(formatParam);
-    
+
     switch (level) {
       case LogLevel.DEBUG:
         console.debug(`[DEBUG][${timestamp}] ${message}`, ...formattedParams);
@@ -78,7 +83,7 @@ function log(level: LogLevel, message: string, ...optionalParams: any[]) {
         break;
       case LogLevel.ERROR:
         console.error(`[ERROR][${timestamp}] ${message}`, ...formattedParams);
-        
+
         // Capture error in Sentry for production monitoring
         if (!isDevelopment) {
           Sentry.captureMessage(`[ERROR] ${message}`, 'error');
@@ -112,7 +117,7 @@ export function info(message: string, ...optionalParams: any[]) {
  */
 export function warn(message: string, ...optionalParams: any[]) {
   log(LogLevel.WARN, message, ...optionalParams);
-  
+
   // Capture warnings in Sentry if needed
   if (!isDevelopment) {
     Sentry.captureMessage(`[WARN] ${message}`, 'warning');
@@ -132,20 +137,20 @@ export function error(message: string, ...optionalParams: any[]) {
 export function logError(context: string, error: any) {
   if (error instanceof Error) {
     log(LogLevel.ERROR, `${context}: ${error.message}`, error.stack);
-    
+
     // Capture the error object in Sentry
     if (!isDevelopment) {
       Sentry.captureException(error, {
         contexts: {
           custom: {
-            context: context,
+            context,
           },
         },
       });
     }
   } else {
     log(LogLevel.ERROR, `${context}: ${String(error)}`);
-    
+
     // Capture non-error objects as messages
     if (!isDevelopment) {
       Sentry.captureMessage(`${context}: ${String(error)}`, 'error');

@@ -1,10 +1,11 @@
 // lib/UserDataManager.ts
 // Centralized user data management with preloading and caching
 
-import { supabase } from './supabase';
-import logger from './logger';
-import type { UserProfile } from './api/users';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+
+import type { UserProfile } from './api/users';
+import logger from './logger';
+import { supabase } from './supabase';
 
 // Enhanced cache with persistence
 class UserDataManager {
@@ -24,7 +25,9 @@ class UserDataManager {
   /**
    * Get current user data with caching
    */
-  async getUserData(forceRefresh: boolean = false): Promise<UserProfile | null> {
+  async getUserData(
+    forceRefresh: boolean = false
+  ): Promise<UserProfile | null> {
     if (this.storageLoadPromise) {
       await this.storageLoadPromise;
     }
@@ -32,7 +35,9 @@ class UserDataManager {
 
     // Ensure we only serve cached data for an active session
     try {
-      const { data: { user } } = await supabase.auth.getUser();
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
       if (!user) {
         if (this.userData) {
           logger.debug('No active session. Clearing cached user data.');
@@ -44,12 +49,12 @@ class UserDataManager {
       logger.error('Error checking session before returning user data:', error);
       return null;
     }
-    
+
     // Return cached data if still valid and not forcing refresh
     if (
-      this.userData && 
-      !forceRefresh && 
-      (now - this.lastFetchTime) < this.cacheExpiry
+      this.userData &&
+      !forceRefresh &&
+      now - this.lastFetchTime < this.cacheExpiry
     ) {
       logger.debug('Returning cached user data');
       return this.userData;
@@ -85,11 +90,13 @@ class UserDataManager {
    */
   private async fetchUserData(): Promise<UserProfile | null> {
     try {
-      const { data: { user } } = await supabase.auth.getUser();
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
       if (!user) return null;
 
       logger.debug('Fetching user data from Supabase');
-      
+
       const { data, error } = await supabase
         .from('users')
         .select('*')
@@ -104,7 +111,7 @@ class UserDataManager {
         }
         throw error;
       }
-      
+
       logger.debug('User data fetched successfully');
       return data as UserProfile;
     } catch (error) {
@@ -168,7 +175,7 @@ class UserDataManager {
       if (this.userData) {
         const cacheData = {
           data: this.userData,
-          timestamp: this.lastFetchTime
+          timestamp: this.lastFetchTime,
         };
         AsyncStorage.setItem(this.storageKey, JSON.stringify(cacheData));
       }
@@ -186,9 +193,9 @@ class UserDataManager {
       if (cached) {
         const cacheData = JSON.parse(cached);
         const now = Date.now();
-        
+
         // Check if cache is still valid
-        if ((now - cacheData.timestamp) < this.cacheExpiry) {
+        if (now - cacheData.timestamp < this.cacheExpiry) {
           this.userData = cacheData.data;
           this.lastFetchTime = cacheData.timestamp;
           logger.debug('Loaded user data from storage cache');

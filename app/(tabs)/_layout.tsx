@@ -1,12 +1,13 @@
 ﻿// app/(tabs)/_layout.tsx
-import { Tabs, useRouter } from 'expo-router';
-import { Text, StyleSheet, Image, View, Platform } from 'react-native';
 import { BlurView } from 'expo-blur';
+import { Tabs, useRouter } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
-import { supabase } from '../../lib/supabase';
-import logger from '../../lib/logger';
-import { userDataManager } from '../../lib/UserDataManager';
+import { Text, StyleSheet, Image, View, Platform } from 'react-native';
+
 import { daPaintDataManager } from '../../lib/DaPaintDataManager';
+import logger from '../../lib/logger';
+import { supabase } from '../../lib/supabase';
+import { userDataManager } from '../../lib/UserDataManager';
 
 const palette = {
   ink: '#005c82',
@@ -31,7 +32,9 @@ export default function TabsLayout() {
 
   const checkActiveDaPaint = useCallback(async () => {
     try {
-      const { data: { user } } = await supabase.auth.getUser();
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
       if (!user) {
         // setHasActiveDaPaint(false); // Not used but may be needed in future
         return;
@@ -62,7 +65,7 @@ export default function TabsLayout() {
           event: 'INSERT',
           schema: 'public',
           table: 'dapaints',
-          filter: `status=in.(scheduled,pending_balance,live)`
+          filter: `status=in.(scheduled,pending_balance,live)`,
         },
         () => {
           checkActiveDaPaint();
@@ -74,7 +77,7 @@ export default function TabsLayout() {
           event: 'UPDATE',
           schema: 'public',
           table: 'dapaints',
-          filter: `status=in.(scheduled,pending_balance,live)`
+          filter: `status=in.(scheduled,pending_balance,live)`,
         },
         () => {
           checkActiveDaPaint();
@@ -86,7 +89,7 @@ export default function TabsLayout() {
           event: 'DELETE',
           schema: 'public',
           table: 'dapaints',
-          filter: `status=in.(scheduled,pending_balance,live)`
+          filter: `status=in.(scheduled,pending_balance,live)`,
         },
         () => {
           checkActiveDaPaint();
@@ -101,7 +104,7 @@ export default function TabsLayout() {
 
   // Redirect to landing on sign out
   useEffect(() => {
-    const { data: authListener } = supabase.auth.onAuthStateChange((event) => {
+    const { data: authListener } = supabase.auth.onAuthStateChange(event => {
       if (event === 'SIGNED_OUT') {
         router.replace('/');
       }
@@ -133,16 +136,21 @@ export default function TabsLayout() {
         tabBarInactiveTintColor: palette.inkSoft,
         tabBarLabelStyle: styles.tabLabel,
         tabBarItemStyle: styles.tabItem,
-        tabBarStyle: hideTabBar ? [styles.tabBar, styles.tabBarHidden] : styles.tabBar,
-        tabBarBackground: () => (
+        tabBarStyle: hideTabBar
+          ? [styles.tabBar, styles.tabBarHidden]
+          : styles.tabBar,
+        tabBarBackground: () =>
           Platform.OS === 'web' ? (
             <View style={styles.tabBarBackdropWeb} />
           ) : (
-            <BlurView intensity={28} tint="light" style={StyleSheet.absoluteFillObject}>
+            <BlurView
+              intensity={28}
+              tint="light"
+              style={StyleSheet.absoluteFillObject}
+            >
               <View style={styles.tabBarBackdropNative} />
             </BlurView>
-          )
-        ),
+          ),
         headerShown: false,
       }}
     >
@@ -152,10 +160,20 @@ export default function TabsLayout() {
         options={() => ({
           title: 'Feed',
           tabBarIcon: ({ focused }) => (
-            <View style={focused ? [styles.iconContainer, styles.iconContainerActive] : styles.iconContainer}>
+            <View
+              style={
+                focused
+                  ? [styles.iconContainer, styles.iconContainerActive]
+                  : styles.iconContainer
+              }
+            >
               <Image
                 source={require('../../assets/logo.png')}
-                style={focused ? [styles.logoIcon, styles.iconActive] : styles.logoIcon}
+                style={
+                  focused
+                    ? [styles.logoIcon, styles.iconActive]
+                    : styles.logoIcon
+                }
                 resizeMode="contain"
               />
             </View>
@@ -167,11 +185,21 @@ export default function TabsLayout() {
         options={() => ({
           title: 'Active',
           tabBarIcon: ({ focused }) => (
-            <View style={focused ? [styles.iconContainer, styles.iconContainerActive] : styles.iconContainer}>
+            <View
+              style={
+                focused
+                  ? [styles.iconContainer, styles.iconContainerActive]
+                  : styles.iconContainer
+              }
+            >
               <Text
-                  style={focused ? [styles.iconText, styles.iconTextActive] : [styles.iconText, styles.iconTextInactive]}
-                >
-                  🔥
+                style={
+                  focused
+                    ? [styles.iconText, styles.iconTextActive]
+                    : [styles.iconText, styles.iconTextInactive]
+                }
+              >
+                🔥
               </Text>
             </View>
           ),
@@ -182,39 +210,72 @@ export default function TabsLayout() {
         options={() => ({
           title: 'Profile',
           tabBarIcon: ({ focused }) => (
-            <View style={focused ? [styles.iconContainer, styles.iconContainerActive] : styles.iconContainer}>
+            <View
+              style={
+                focused
+                  ? [styles.iconContainer, styles.iconContainerActive]
+                  : styles.iconContainer
+              }
+            >
               <Text
-                  style={focused ? [styles.iconText, styles.iconTextActive] : [styles.iconText, styles.iconTextInactive]}
-                >
-                  👤
+                style={
+                  focused
+                    ? [styles.iconText, styles.iconTextActive]
+                    : [styles.iconText, styles.iconTextInactive]
+                }
+              >
+                👤
               </Text>
             </View>
           ),
         })}
       />
-
     </Tabs>
   );
 }
 
 const styles = StyleSheet.create({
+  iconActive: {
+    transform: [{ scale: 1.1 }],
+  },
+  iconContainer: {
+    borderRadius: 16,
+    padding: 6,
+  },
+  iconContainerActive: {
+    backgroundColor: palette.inkSoft,
+  },
+  iconText: {
+    fontSize: 22,
+    fontWeight: '700',
+  },
+  iconTextActive: {
+    color: palette.ink,
+  },
+  iconTextInactive: {
+    color: palette.inkSoft,
+  },
+  logoIcon: {
+    height: 26,
+    width: 26,
+  },
   tabBar: {
-    position: 'absolute',
-    left: 0,
-    right: 0,
-    bottom: 16,
+    alignSelf: 'center',
     backgroundColor: 'transparent',
+    borderRadius: 28,
     borderTopColor: 'transparent',
     borderTopWidth: 0,
+    bottom: 16,
     height: 60,
-    paddingBottom: 8,
-    paddingTop: 0,
-    paddingHorizontal: 16,
-    borderRadius: 28,
-    alignSelf: 'center',
-    width: '90%',
+    left: 0,
     maxWidth: 500,
     overflow: 'hidden',
+    paddingBottom: 8,
+    paddingHorizontal: 16,
+    paddingTop: 0,
+    position: 'absolute',
+    right: 0,
+    width: '90%',
     ...Platform.select({
       ios: {
         shadowColor: '#000',
@@ -238,53 +299,29 @@ const styles = StyleSheet.create({
     }),
   },
   tabBarBackdropNative: {
-    flex: 1,
     backgroundColor: 'rgba(255,255,255,0.75)',
     borderRadius: 28,
+    flex: 1,
   },
-  tabBarBackdropWeb: ({
+  tabBarBackdropWeb: {
     flex: 1,
     backgroundColor: 'rgba(255,255,255,0.85)',
     backdropFilter: 'blur(20px)',
     WebkitBackdropFilter: 'blur(20px)',
     borderRadius: 28,
-  } as any),
+  } as any,
   tabBarHidden: {
     display: 'none',
   },
   tabItem: {
-    paddingVertical: 8,
-    paddingHorizontal: 12,
     borderRadius: 20,
     marginHorizontal: 4,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
   },
   tabLabel: {
     fontSize: 12,
     fontWeight: '600',
     marginTop: 4,
-  },
-  iconText: {
-    fontSize: 22,
-    fontWeight: '700',
-  },
-  iconTextActive: {
-    color: palette.ink,
-  },
-  iconTextInactive: {
-    color: palette.inkSoft,
-  },
-  logoIcon: {
-    width: 26,
-    height: 26,
-  },
-  iconContainer: {
-    padding: 6,
-    borderRadius: 16,
-  },
-  iconContainerActive: {
-    backgroundColor: palette.inkSoft,
-  },
-  iconActive: {
-    transform: [{ scale: 1.1 }],
   },
 });

@@ -1,15 +1,33 @@
 // app/(auth)/signup.tsx - Fixed signup with proper user creation
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { Alert, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import {
+  Alert,
+  KeyboardAvoidingView,
+  Platform,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  View,
+} from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+
+import BackgroundLayer from '../../components/ui/BackgroundLayer';
+import {
+  DaPaintColors,
+  DaPaintSpacing,
+  DaPaintRadius,
+  DaPaintShadows,
+  DaPaintTypography,
+  DaPaintDatePickerTheme,
+} from '../../constants/DaPaintDesign';
 import { signUp } from '../../lib/api/auth';
 import logger from '../../lib/logger';
-import { userDataManager } from '../../lib/UserDataManager';
-import { DaPaintColors, DaPaintSpacing, DaPaintRadius, DaPaintShadows, DaPaintTypography, DaPaintDatePickerTheme } from '../../constants/DaPaintDesign';
-import { getKeyboardDismissHandler } from '../../lib/webFocusGuard';
-import BackgroundLayer from '../../components/ui/BackgroundLayer';
 import { supabase } from '../../lib/supabase';
+import { userDataManager } from '../../lib/UserDataManager';
+import { getKeyboardDismissHandler } from '../../lib/webFocusGuard';
 
 let DateTimePicker: any = null;
 if (Platform.OS !== 'web') {
@@ -24,11 +42,11 @@ export default function SignupScreen() {
   const router = useRouter();
   const params = useLocalSearchParams();
   const { username, email, phone } = {
-    username: params.username as string || '',
-    email: params.email as string || '',
-    phone: params.phone as string || '',
+    username: (params.username as string) || '',
+    email: (params.email as string) || '',
+    phone: (params.phone as string) || '',
   };
-  
+
   const [step, setStep] = useState(1);
   const [formData, setFormData] = useState({
     email: email || '',
@@ -40,7 +58,7 @@ export default function SignupScreen() {
     howDidYouHear: '',
   });
   const [usernameInput, setUsernameInput] = useState(username || '');
-  
+
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [loading, setLoading] = useState(false);
   const [sessionChecked, setSessionChecked] = useState(false);
@@ -49,12 +67,13 @@ export default function SignupScreen() {
   useEffect(() => {
     const checkExistingSession = async () => {
       try {
-        const { data: { session } } = await supabase.auth.getSession();
+        const {
+          data: { session },
+        } = await supabase.auth.getSession();
         if (session) {
           logger.debug('User already logged in, redirecting to feed');
           await userDataManager.preloadUserData();
           router.replace('/(tabs)/feed');
-          return;
         }
       } catch (error) {
         logger.error('Error checking existing session:', error);
@@ -70,10 +89,10 @@ export default function SignupScreen() {
   };
 
   const formatDate = (date: Date) => {
-    return date.toLocaleDateString('en-US', { 
-      month: '2-digit', 
-      day: '2-digit', 
-      year: 'numeric' 
+    return date.toLocaleDateString('en-US', {
+      month: '2-digit',
+      day: '2-digit',
+      year: 'numeric',
     });
   };
 
@@ -81,11 +100,14 @@ export default function SignupScreen() {
     const today = new Date();
     let age = today.getFullYear() - birthday.getFullYear();
     const monthDiff = today.getMonth() - birthday.getMonth();
-    
-    if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthday.getDate())) {
+
+    if (
+      monthDiff < 0 ||
+      (monthDiff === 0 && today.getDate() < birthday.getDate())
+    ) {
       age--;
     }
-    
+
     return age;
   };
 
@@ -107,52 +129,55 @@ export default function SignupScreen() {
         Alert.alert('Try Again', 'Email is required');
         return;
       }
-      
+
       const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
       if (!emailRegex.test(formData.email)) {
         Alert.alert('Try Again', 'Please enter a valid email address');
         return;
       }
-      
+
       if (!formData.password) {
         Alert.alert('Try Again', 'Password is required');
         return;
       }
-      
+
       if (formData.password.length < 6) {
         Alert.alert('Try Again', 'Password must be at least 6 characters long');
         return;
       }
     }
-    
+
     if (step === 2) {
       if (!formData.phone) {
         Alert.alert('Try Again', 'Phone number is required');
         return;
       }
-      
+
       const phoneRegex = /^[\d\s\-\(\)\+]+$/;
       if (!phoneRegex.test(formData.phone)) {
         Alert.alert('Try Again', 'Please enter a valid phone number');
         return;
       }
     }
-    
+
     if (step === 3) {
       const age = calculateAge(formData.birthday);
       if (age < 18) {
-        Alert.alert('Too Young', 'You must be at least 18 years old to sign up');
+        Alert.alert(
+          'Too Young',
+          'You must be at least 18 years old to sign up'
+        );
         return;
       }
     }
-    
+
     if (step === 4) {
       if (!formData.postalCode || formData.postalCode.trim().length < 3) {
         Alert.alert('Try Again', 'Please enter a valid postal code');
         return;
       }
     }
-    
+
     if (step < 4) {
       setStep(step + 1);
     }
@@ -171,8 +196,16 @@ export default function SignupScreen() {
 
     try {
       // Validate all required fields
-      if (!formData.email || !formData.password || !formData.phone || !formData.postalCode) {
-        Alert.alert('Missing Information', 'Please fill in all required fields.');
+      if (
+        !formData.email ||
+        !formData.password ||
+        !formData.phone ||
+        !formData.postalCode
+      ) {
+        Alert.alert(
+          'Missing Information',
+          'Please fill in all required fields.'
+        );
         setLoading(false);
         return;
       }
@@ -187,11 +220,18 @@ export default function SignupScreen() {
       logger.debug('Starting signup process for:', normalizedUsername);
 
       // Step 1: Create auth user
-      const authResult = await signUp(formData.email, formData.password, normalizedUsername);
+      const authResult = await signUp(
+        formData.email,
+        formData.password,
+        normalizedUsername
+      );
 
       if (!authResult.success || !authResult.userId) {
         logger.error('Auth signup failed:', authResult.error);
-        Alert.alert('Sign Up Failed', authResult.error?.message || 'Could not create account.');
+        Alert.alert(
+          'Sign Up Failed',
+          authResult.error?.message || 'Could not create account.'
+        );
         setLoading(false);
         return;
       }
@@ -223,7 +263,10 @@ export default function SignupScreen() {
           is_active: true,
         };
 
-        logger.debug('Creating user profile:', { userId, username: normalizedUsername });
+        logger.debug('Creating user profile:', {
+          userId,
+          username: normalizedUsername,
+        });
 
         // Use INSERT to catch conflicts properly
         const { data: insertedUser, error: profileError } = await supabase
@@ -241,23 +284,31 @@ export default function SignupScreen() {
         }
 
         logger.debug('User profile created successfully:', insertedUser.id);
-
       } catch (profileError: any) {
-        logger.error('CRITICAL: Profile creation failed, cleaning up auth user', profileError);
-        
+        logger.error(
+          'CRITICAL: Profile creation failed, cleaning up auth user',
+          profileError
+        );
+
         // GHOST USER PREVENTION: Delete auth user if profile creation fails
         try {
           await supabase.auth.signOut();
           logger.debug('Signed out after profile creation failure');
         } catch (signOutError) {
-          logger.error('Error signing out after profile failure:', signOutError);
+          logger.error(
+            'Error signing out after profile failure:',
+            signOutError
+          );
         }
 
         // Provide specific error messages
         if (profileError.code === '23505') {
           // Unique constraint violation
           if (profileError.message?.includes('username')) {
-            Alert.alert('Sign Up Failed', 'This username is already taken. Please choose another.');
+            Alert.alert(
+              'Sign Up Failed',
+              'This username is already taken. Please choose another.'
+            );
           } else if (profileError.message?.includes('email')) {
             Alert.alert('Sign Up Failed', 'This email is already registered.');
           } else {
@@ -265,56 +316,37 @@ export default function SignupScreen() {
           }
         } else if (profileError.code === '23514') {
           // Check constraint violation
-          Alert.alert('Sign Up Failed', 'Please check your information. All required fields must be filled.');
+          Alert.alert(
+            'Sign Up Failed',
+            'Please check your information. All required fields must be filled.'
+          );
         } else {
-          Alert.alert('Sign Up Failed', 'Could not create your profile. Please try again or contact support.');
+          Alert.alert(
+            'Sign Up Failed',
+            'Could not create your profile. Please try again or contact support.'
+          );
         }
-        
+
         setLoading(false);
         return;
       }
 
-      // Step 3: Create notification settings (optional - don't block signup if this fails)
-      try {
-        logger.debug('Creating notification settings for user:', userId);
-        
-        const { error: notificationError } = await supabase
-          .from('notification_settings')
-          .insert({
-            user_id: userId,
-            new_follower: true,
-            dapaint_invite: true,
-            dapaint_joined: true,
-            dapaint_starting: true,
-            dapaint_result: true,
-            messages: true,
-          });
-
-        if (notificationError) {
-          // Log the specific error details
-          logger.warn('Failed to create notification settings (non-critical):', {
-            code: notificationError.code,
-            message: notificationError.message,
-            details: notificationError.details,
-            hint: notificationError.hint,
-          });
-          
-          // Even though notification settings failed, we continue with signup
-          // The user can set these preferences later in their profile
-        } else {
-          logger.debug('Notification settings created successfully');
-        }
-      } catch (notifError: any) {
-        logger.warn('Error creating notification settings (non-critical):', notifError);
-        // Continue with signup even if this fails
-      }
+      // Step 3: Notification settings will be created automatically by database trigger
+      logger.debug('Notification settings will be created by trigger');
 
       // Step 4: Verify session was created and persisted
       try {
-        const { data: { session } } = await supabase.auth.getSession();
+        const {
+          data: { session },
+        } = await supabase.auth.getSession();
         if (!session) {
-          logger.error('No session found after signup - this should not happen');
-          Alert.alert('Sign Up Issue', 'Account created but please sign in manually.');
+          logger.error(
+            'No session found after signup - this should not happen'
+          );
+          Alert.alert(
+            'Sign Up Issue',
+            'Account created but please sign in manually.'
+          );
           router.replace('/(auth)');
           return;
         }
@@ -326,10 +358,9 @@ export default function SignupScreen() {
       // Step 5: Preload user data and navigate
       logger.debug('Preloading user data...');
       await userDataManager.preloadUserData();
-      
+
       logger.debug('Signup complete, navigating to feed');
       router.replace('/(tabs)/feed');
-
     } catch (error: any) {
       logger.error('Unexpected signup error:', error);
       Alert.alert('Sign Up Failed', 'Something went wrong. Please try again.');
@@ -342,31 +373,43 @@ export default function SignupScreen() {
   return (
     <SafeAreaView style={styles.screen}>
       <BackgroundLayer />
-      <Pressable onPress={dismissKeyboard} accessible={false} style={styles.touchGuard}>
-        <KeyboardAvoidingView 
+      <Pressable
+        onPress={dismissKeyboard}
+        accessible={false}
+        style={styles.touchGuard}
+      >
+        <KeyboardAvoidingView
           behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
           style={styles.container}
         >
           <View style={styles.header}>
             <Text style={styles.title}>Create Account</Text>
             <View style={styles.progressContainer}>
-              {[1, 2, 3, 4].map((stepNum) => (
-                <View 
-                  key={stepNum} 
+              {[1, 2, 3, 4].map(stepNum => (
+                <View
+                  key={stepNum}
                   style={[
-                    styles.progressDot, 
-                    step >= stepNum ? styles.progressDotActive : styles.progressDotInactive
-                  ]} 
+                    styles.progressDot,
+                    step >= stepNum
+                      ? styles.progressDotActive
+                      : styles.progressDotInactive,
+                  ]}
                 />
               ))}
             </View>
           </View>
 
-          <ScrollView style={styles.content} contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+          <ScrollView
+            style={styles.content}
+            contentContainerStyle={styles.scrollContent}
+            showsVerticalScrollIndicator={false}
+          >
             {step === 1 && (
               <View style={styles.step}>
                 <Text style={styles.stepTitle}>Account Info</Text>
-                <Text style={styles.stepSubtitle}>Create your login credentials</Text>
+                <Text style={styles.stepSubtitle}>
+                  Create your login credentials
+                </Text>
 
                 <View style={styles.inputGroup}>
                   <Text style={styles.label}>Username *</Text>
@@ -391,7 +434,7 @@ export default function SignupScreen() {
                   <TextInput
                     style={styles.input}
                     value={formData.email}
-                    onChangeText={(text) => updateField('email', text)}
+                    onChangeText={text => updateField('email', text)}
                     placeholder="your@email.com"
                     placeholderTextColor={DaPaintColors.textTertiary}
                     keyboardType="email-address"
@@ -405,7 +448,7 @@ export default function SignupScreen() {
                   <TextInput
                     style={styles.input}
                     value={formData.password}
-                    onChangeText={(text) => updateField('password', text)}
+                    onChangeText={text => updateField('password', text)}
                     placeholder="At least 6 characters"
                     placeholderTextColor={DaPaintColors.textTertiary}
                     secureTextEntry
@@ -415,9 +458,15 @@ export default function SignupScreen() {
 
                 <View style={styles.exampleBox}>
                   <Text style={styles.exampleTitle}>Password Tips</Text>
-                  <Text style={styles.exampleText}>• Use at least 6 characters</Text>
-                  <Text style={styles.exampleText}>• Mix letters, numbers, and symbols</Text>
-                  <Text style={styles.exampleText}>• Don't use easily guessed passwords</Text>
+                  <Text style={styles.exampleText}>
+                    • Use at least 6 characters
+                  </Text>
+                  <Text style={styles.exampleText}>
+                    • Mix letters, numbers, and symbols
+                  </Text>
+                  <Text style={styles.exampleText}>
+                    • Don't use easily guessed passwords
+                  </Text>
                 </View>
               </View>
             )}
@@ -432,7 +481,7 @@ export default function SignupScreen() {
                   <TextInput
                     style={styles.input}
                     value={formData.phone}
-                    onChangeText={(text) => updateField('phone', text)}
+                    onChangeText={text => updateField('phone', text)}
                     placeholder="(123) 456-7890"
                     placeholderTextColor={DaPaintColors.textTertiary}
                     keyboardType="phone-pad"
@@ -452,7 +501,9 @@ export default function SignupScreen() {
             {step === 3 && (
               <View style={styles.step}>
                 <Text style={styles.stepTitle}>Birthday</Text>
-                <Text style={styles.stepSubtitle}>We need this to verify you're 18+</Text>
+                <Text style={styles.stepSubtitle}>
+                  We need this to verify you're 18+
+                </Text>
 
                 <View style={styles.inputGroup}>
                   <Text style={styles.label}>Birthday *</Text>
@@ -460,9 +511,14 @@ export default function SignupScreen() {
                     <TextInput
                       style={styles.input}
                       value={formatDate(formData.birthday)}
-                      onChangeText={(text) => {
+                      onChangeText={text => {
                         const parts = text.split('/');
-                        if (parts.length === 3 && parts[0] && parts[1] && parts[2]) {
+                        if (
+                          parts.length === 3 &&
+                          parts[0] &&
+                          parts[1] &&
+                          parts[2]
+                        ) {
                           const year = parseInt(parts[2]);
                           const month = parseInt(parts[0]) - 1;
                           const day = parseInt(parts[1]);
@@ -480,8 +536,8 @@ export default function SignupScreen() {
                     />
                   ) : (
                     <>
-                      <Pressable 
-                        style={styles.dateButton} 
+                      <Pressable
+                        style={styles.dateButton}
                         onPress={() => setShowDatePicker(true)}
                       >
                         <Text style={styles.dateButtonText}>
@@ -493,7 +549,9 @@ export default function SignupScreen() {
                           <DateTimePicker
                             value={formData.birthday}
                             mode="date"
-                            display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+                            display={
+                              Platform.OS === 'ios' ? 'spinner' : 'default'
+                            }
                             onChange={onDateChange}
                             maximumDate={new Date()}
                             themeVariant={DaPaintDatePickerTheme.themeVariant}
@@ -512,7 +570,12 @@ export default function SignupScreen() {
                     <Text style={styles.infoText}>
                       This helps us verify you meet the age requirement
                     </Text>
-                    <Text style={[styles.infoText, { marginTop: DaPaintSpacing.xxs }]}>
+                    <Text
+                      style={[
+                        styles.infoText,
+                        { marginTop: DaPaintSpacing.xxs },
+                      ]}
+                    >
                       We'll never share your birthday with other users
                     </Text>
                   </View>
@@ -523,14 +586,16 @@ export default function SignupScreen() {
             {step === 4 && (
               <View style={styles.step}>
                 <Text style={styles.stepTitle}>Location</Text>
-                <Text style={styles.stepSubtitle}>Help us connect you with local DaPaints</Text>
+                <Text style={styles.stepSubtitle}>
+                  Help us connect you with local DaPaints
+                </Text>
 
                 <View style={styles.inputGroup}>
                   <Text style={styles.label}>City</Text>
                   <TextInput
                     style={styles.input}
                     value={formData.city}
-                    onChangeText={(text) => updateField('city', text)}
+                    onChangeText={text => updateField('city', text)}
                     placeholder="Miami"
                     placeholderTextColor={DaPaintColors.textTertiary}
                   />
@@ -541,7 +606,9 @@ export default function SignupScreen() {
                   <TextInput
                     style={styles.input}
                     value={formData.postalCode}
-                    onChangeText={(text) => updateField('postalCode', text.toUpperCase())}
+                    onChangeText={text =>
+                      updateField('postalCode', text.toUpperCase())
+                    }
                     placeholder="e.g., 90210 or SW1A 1AA"
                     placeholderTextColor={DaPaintColors.textTertiary}
                     autoCapitalize="characters"
@@ -557,7 +624,7 @@ export default function SignupScreen() {
                   <TextInput
                     style={[styles.input, styles.textArea]}
                     value={formData.howDidYouHear}
-                    onChangeText={(text) => updateField('howDidYouHear', text)}
+                    onChangeText={text => updateField('howDidYouHear', text)}
                     placeholder="Friend referral, social media, etc."
                     placeholderTextColor={DaPaintColors.textTertiary}
                     multiline
@@ -585,7 +652,11 @@ export default function SignupScreen() {
               disabled={loading}
             >
               <Text style={styles.nextButtonText}>
-                {loading ? 'Creating Account...' : step === 4 ? 'Create Account' : 'Next'}
+                {loading
+                  ? 'Creating Account...'
+                  : step === 4
+                    ? 'Create Account'
+                    : 'Next'}
               </Text>
             </Pressable>
           </View>
@@ -596,122 +667,84 @@ export default function SignupScreen() {
 }
 
 const styles = StyleSheet.create({
-  screen: { flex: 1 },
-  touchGuard: { flex: 1 },
-  container: { flex: 1, backgroundColor: 'transparent' },
-  header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
+  backButton: {
     alignItems: 'center',
-    padding: DaPaintSpacing.lg,
-    paddingTop: DaPaintSpacing.headerTop,
-    paddingBottom: DaPaintSpacing.headerBottom,
-    borderBottomWidth: 1,
-    borderBottomColor: DaPaintColors.border,
-  },
-  title: {
-    ...DaPaintTypography.displayLarge,
-    color: DaPaintColors.textPrimary,
-  },
-  progressContainer: { flexDirection: 'row', alignItems: 'center' },
-  progressDot: { width: 8, height: 8, borderRadius: 4, marginHorizontal: 4 },
-  progressDotActive: { backgroundColor: DaPaintColors.primaryDeep },
-  progressDotInactive: { backgroundColor: `${DaPaintColors.primaryDeep}40` },
-  content: { flex: 1 },
-  scrollContent: { padding: DaPaintSpacing.lg, paddingTop: DaPaintSpacing.md },
-  step: { flex: 1 },
-  stepTitle: {
-    ...DaPaintTypography.displayMedium,
-    color: DaPaintColors.textPrimary,
-    marginBottom: DaPaintSpacing.xxs,
-  },
-  stepSubtitle: {
-    ...DaPaintTypography.bodyLarge,
-    color: DaPaintColors.textSecondary,
-    marginBottom: DaPaintSpacing.xl,
-  },
-  inputGroup: { marginBottom: DaPaintSpacing.lg },
-  label: {
-    ...DaPaintTypography.labelMedium,
-    color: DaPaintColors.textPrimary,
-    marginBottom: DaPaintSpacing.xxs,
-  },
-  usernameContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    borderColor: `${DaPaintColors.primaryDeep}60`,
+    borderRadius: DaPaintRadius.sm,
     borderWidth: 1.5,
-    borderColor: DaPaintColors.border,
-    borderRadius: DaPaintRadius.md,
-    backgroundColor: DaPaintColors.surface,
-    padding: DaPaintSpacing.sm,
-  },
-  usernamePrefix: {
-    ...DaPaintTypography.bodyLarge,
-    color: DaPaintColors.textPrimary,
-    marginRight: 4,
-  },
-  usernameInput: {
     flex: 1,
-    ...DaPaintTypography.bodyLarge,
-    color: DaPaintColors.textPrimary,
-    padding: 0,
-  },
-  input: {
-    borderWidth: 1.5,
-    borderColor: DaPaintColors.border,
-    borderRadius: DaPaintRadius.md,
-    backgroundColor: DaPaintColors.surface,
-    padding: DaPaintSpacing.sm,
-    ...DaPaintTypography.bodyLarge,
-    color: DaPaintColors.textPrimary,
     minHeight: 48,
+    padding: DaPaintSpacing.sm,
   },
-  textArea: { height: 80, textAlignVertical: 'top' },
+  backButtonText: {
+    ...DaPaintTypography.labelLarge,
+    color: DaPaintColors.primaryDeep,
+  },
+  container: { backgroundColor: 'transparent', flex: 1 },
+  content: { flex: 1 },
   dateButton: {
-    borderWidth: 1.5,
+    alignItems: 'center',
+    backgroundColor: DaPaintColors.surface,
     borderColor: DaPaintColors.border,
     borderRadius: DaPaintRadius.md,
-    backgroundColor: DaPaintColors.surface,
+    borderWidth: 1.5,
     padding: DaPaintSpacing.sm,
-    alignItems: 'center',
   },
   dateButtonText: {
     ...DaPaintTypography.bodyLarge,
     color: DaPaintColors.textPrimary,
   },
-  dateTimePicker: {
-    backgroundColor: 'transparent',
-    marginTop: DaPaintSpacing.lg,
-    borderRadius: DaPaintRadius.md,
-    alignItems: 'center',
-  },
   datePickerWrapper: { alignItems: 'center', justifyContent: 'center' },
+  dateTimePicker: {
+    alignItems: 'center',
+    backgroundColor: 'transparent',
+    borderRadius: DaPaintRadius.md,
+    marginTop: DaPaintSpacing.lg,
+  },
   exampleBox: {
     backgroundColor: DaPaintColors.surface,
-    borderRadius: DaPaintRadius.md,
-    padding: DaPaintSpacing.sm,
-    marginTop: DaPaintSpacing.lg,
-    borderWidth: 1,
     borderColor: DaPaintColors.border,
-  },
-  exampleTitle: {
-    ...DaPaintTypography.labelMedium,
-    color: DaPaintColors.textPrimary,
-    marginBottom: DaPaintSpacing.xxs,
+    borderRadius: DaPaintRadius.md,
+    borderWidth: 1,
+    marginTop: DaPaintSpacing.lg,
+    padding: DaPaintSpacing.sm,
   },
   exampleText: {
     ...DaPaintTypography.bodyMedium,
     color: DaPaintColors.textSecondary,
     marginBottom: 4,
   },
-  infoBox: {
+  exampleTitle: {
+    ...DaPaintTypography.labelMedium,
+    color: DaPaintColors.textPrimary,
+    marginBottom: DaPaintSpacing.xxs,
+  },
+  footer: {
+    borderTopColor: DaPaintColors.border,
+    borderTopWidth: 1,
     flexDirection: 'row',
+    gap: DaPaintSpacing.xs,
+    padding: DaPaintSpacing.lg,
+    paddingTop: DaPaintSpacing.sm,
+  },
+  header: {
+    alignItems: 'center',
+    borderBottomColor: DaPaintColors.border,
+    borderBottomWidth: 1,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    padding: DaPaintSpacing.lg,
+    paddingBottom: DaPaintSpacing.headerBottom,
+    paddingTop: DaPaintSpacing.headerTop,
+  },
+  infoBox: {
     backgroundColor: DaPaintColors.surface,
-    borderRadius: DaPaintRadius.md,
-    padding: DaPaintSpacing.sm,
-    marginTop: DaPaintSpacing.lg,
-    borderWidth: 1,
     borderColor: DaPaintColors.border,
+    borderRadius: DaPaintRadius.md,
+    borderWidth: 1,
+    flexDirection: 'row',
+    marginTop: DaPaintSpacing.lg,
+    padding: DaPaintSpacing.sm,
   },
   infoIcon: { fontSize: 20, marginRight: DaPaintSpacing.xs },
   infoText: {
@@ -720,38 +753,76 @@ const styles = StyleSheet.create({
     color: DaPaintColors.textSecondary,
     lineHeight: 20,
   },
-  footer: {
-    flexDirection: 'row',
-    padding: DaPaintSpacing.lg,
-    paddingTop: DaPaintSpacing.sm,
-    borderTopWidth: 1,
-    borderTopColor: DaPaintColors.border,
-    gap: DaPaintSpacing.xs,
-  },
-  backButton: {
-    padding: DaPaintSpacing.sm,
-    borderRadius: DaPaintRadius.sm,
+  input: {
+    backgroundColor: DaPaintColors.surface,
+    borderColor: DaPaintColors.border,
+    borderRadius: DaPaintRadius.md,
     borderWidth: 1.5,
-    borderColor: `${DaPaintColors.primaryDeep}60`,
-    alignItems: 'center',
-    flex: 1,
+    padding: DaPaintSpacing.sm,
+    ...DaPaintTypography.bodyLarge,
+    color: DaPaintColors.textPrimary,
     minHeight: 48,
   },
-  backButtonText: {
-    ...DaPaintTypography.labelLarge,
-    color: DaPaintColors.primaryDeep,
+  inputGroup: { marginBottom: DaPaintSpacing.lg },
+  label: {
+    ...DaPaintTypography.labelMedium,
+    color: DaPaintColors.textPrimary,
+    marginBottom: DaPaintSpacing.xxs,
   },
   nextButton: {
-    backgroundColor: DaPaintColors.primaryDeep,
-    padding: DaPaintSpacing.sm,
-    borderRadius: DaPaintRadius.sm,
     alignItems: 'center',
+    backgroundColor: DaPaintColors.primaryDeep,
+    borderRadius: DaPaintRadius.sm,
     flex: 2,
     minHeight: 48,
+    padding: DaPaintSpacing.sm,
     ...DaPaintShadows.medium,
   },
   nextButtonText: {
     ...DaPaintTypography.labelLarge,
     color: '#ffffff',
+  },
+  progressContainer: { alignItems: 'center', flexDirection: 'row' },
+  progressDot: { borderRadius: 4, height: 8, marginHorizontal: 4, width: 8 },
+  progressDotActive: { backgroundColor: DaPaintColors.primaryDeep },
+  progressDotInactive: { backgroundColor: `${DaPaintColors.primaryDeep}40` },
+  screen: { flex: 1 },
+  scrollContent: { padding: DaPaintSpacing.lg, paddingTop: DaPaintSpacing.md },
+  step: { flex: 1 },
+  stepSubtitle: {
+    ...DaPaintTypography.bodyLarge,
+    color: DaPaintColors.textSecondary,
+    marginBottom: DaPaintSpacing.xl,
+  },
+  stepTitle: {
+    ...DaPaintTypography.displayMedium,
+    color: DaPaintColors.textPrimary,
+    marginBottom: DaPaintSpacing.xxs,
+  },
+  textArea: { height: 80, textAlignVertical: 'top' },
+  title: {
+    ...DaPaintTypography.displayLarge,
+    color: DaPaintColors.textPrimary,
+  },
+  touchGuard: { flex: 1 },
+  usernameContainer: {
+    alignItems: 'center',
+    backgroundColor: DaPaintColors.surface,
+    borderColor: DaPaintColors.border,
+    borderRadius: DaPaintRadius.md,
+    borderWidth: 1.5,
+    flexDirection: 'row',
+    padding: DaPaintSpacing.sm,
+  },
+  usernameInput: {
+    flex: 1,
+    ...DaPaintTypography.bodyLarge,
+    color: DaPaintColors.textPrimary,
+    padding: 0,
+  },
+  usernamePrefix: {
+    ...DaPaintTypography.bodyLarge,
+    color: DaPaintColors.textPrimary,
+    marginRight: 4,
   },
 });

@@ -1,6 +1,6 @@
 // lib/api/auth.ts - Fixed with username parameter
-import { supabase } from '../supabase';
 import logger from '../logger';
+import { supabase } from '../supabase';
 
 export type AuthError = {
   message: string;
@@ -16,13 +16,16 @@ export type AuthError = {
 export async function signUp(
   email: string,
   password: string,
-  username: string  // Username for auth metadata only
+  username: string // Username for auth metadata only
 ): Promise<{ success: boolean; error?: AuthError; userId?: string }> {
   try {
     const normalizedEmail = email.toLowerCase().trim();
     const normalizedUsername = username.toLowerCase().trim();
-    
-    logger.debug('Starting signup:', { email: normalizedEmail, username: normalizedUsername });
+
+    logger.debug('Starting signup:', {
+      email: normalizedEmail,
+      username: normalizedUsername,
+    });
 
     // Validate username format (must match DB constraint: lowercase alphanumeric only)
     if (!/^[a-z0-9]+$/.test(normalizedUsername)) {
@@ -30,8 +33,8 @@ export async function signUp(
         success: false,
         error: {
           message: 'Username can only contain lowercase letters and numbers',
-          code: 'INVALID_USERNAME'
-        }
+          code: 'INVALID_USERNAME',
+        },
       };
     }
 
@@ -47,8 +50,8 @@ export async function signUp(
         success: false,
         error: {
           message: 'This username is already taken',
-          code: 'USERNAME_EXISTS'
-        }
+          code: 'USERNAME_EXISTS',
+        },
       };
     }
 
@@ -60,9 +63,9 @@ export async function signUp(
       options: {
         data: {
           username: normalizedUsername,
-          display_name: normalizedUsername
-        }
-      }
+          display_name: normalizedUsername,
+        },
+      },
     });
 
     if (authError) {
@@ -72,8 +75,8 @@ export async function signUp(
         error: {
           message: authError.message,
           code: authError.status?.toString() || undefined,
-          details: 'Failed to create authentication account'
-        }
+          details: 'Failed to create authentication account',
+        },
       };
     }
 
@@ -82,14 +85,16 @@ export async function signUp(
         success: false,
         error: {
           message: 'No user returned from signup',
-          details: 'Authentication succeeded but no user data returned'
-        }
+          details: 'Authentication succeeded but no user data returned',
+        },
       };
     }
 
     // Check if we have a session (should be auto-created by signUp)
     if (!authData.session) {
-      logger.warn('No session returned from signUp - user may need to verify email');
+      logger.warn(
+        'No session returned from signUp - user may need to verify email'
+      );
     } else {
       logger.debug('Session created with auth user:', authData.session.user.id);
     }
@@ -101,17 +106,16 @@ export async function signUp(
     // with all required fields including zipcode
     return {
       success: true,
-      userId: userId
+      userId,
     };
-
   } catch (error: any) {
     logger.error('Unexpected signup error:', error);
     return {
       success: false,
       error: {
         message: error.message || 'An unexpected error occurred',
-        details: 'Please try again or contact support'
-      }
+        details: 'Please try again or contact support',
+      },
     };
   }
 }
@@ -128,12 +132,12 @@ export async function signIn(
 
     const { data, error } = await supabase.auth.signInWithPassword({
       email: email.toLowerCase().trim(),
-      password
+      password,
     });
 
     if (error) {
       logger.error('Signin error:', error);
-      
+
       // Provide user-friendly error messages
       let userMessage = error.message;
       if (error.message.includes('Invalid login credentials')) {
@@ -141,14 +145,14 @@ export async function signIn(
       } else if (error.message.includes('Email not confirmed')) {
         userMessage = 'Please verify your email address';
       }
-      
+
       return {
         success: false,
         error: {
           message: userMessage,
           code: error.status?.toString() || undefined,
-          details: error.message
-        }
+          details: error.message,
+        },
       };
     }
 
@@ -157,8 +161,8 @@ export async function signIn(
         success: false,
         error: {
           message: 'Login failed',
-          details: 'No user data returned'
-        }
+          details: 'No user data returned',
+        },
       };
     }
 
@@ -171,7 +175,7 @@ export async function signIn(
 
     if (dbError || !dbUser) {
       logger.error('Database user not found for auth user:', dbError);
-      
+
       // This is a ghost user - they exist in auth but not in database
       // We should NOT auto-create them, as we don't have their username
       return {
@@ -179,8 +183,8 @@ export async function signIn(
         error: {
           message: 'User profile not found',
           details: 'Please contact support to fix your account',
-          code: 'MISSING_PROFILE'
-        }
+          code: 'MISSING_PROFILE',
+        },
       };
     }
 
@@ -188,17 +192,16 @@ export async function signIn(
 
     return {
       success: true,
-      userId: data.user.id
+      userId: data.user.id,
     };
-
   } catch (error: any) {
     logger.error('Unexpected signin error:', error);
     return {
       success: false,
       error: {
         message: error.message || 'An unexpected error occurred',
-        details: 'Please try again'
-      }
+        details: 'Please try again',
+      },
     };
   }
 }
@@ -206,7 +209,10 @@ export async function signIn(
 /**
  * Sign out the current user
  */
-export async function signOut(): Promise<{ success: boolean; error?: AuthError }> {
+export async function signOut(): Promise<{
+  success: boolean;
+  error?: AuthError;
+}> {
   try {
     const { error } = await supabase.auth.signOut();
 
@@ -216,20 +222,19 @@ export async function signOut(): Promise<{ success: boolean; error?: AuthError }
         success: false,
         error: {
           message: error.message,
-          details: 'Failed to sign out'
-        }
+          details: 'Failed to sign out',
+        },
       };
     }
 
     return { success: true };
-
   } catch (error: any) {
     logger.error('Unexpected signout error:', error);
     return {
       success: false,
       error: {
-        message: error.message || 'An unexpected error occurred'
-      }
+        message: error.message || 'An unexpected error occurred',
+      },
     };
   }
 }
@@ -239,7 +244,10 @@ export async function signOut(): Promise<{ success: boolean; error?: AuthError }
  */
 export async function getSession() {
   try {
-    const { data: { session }, error } = await supabase.auth.getSession();
+    const {
+      data: { session },
+      error,
+    } = await supabase.auth.getSession();
 
     if (error) {
       logger.error('Get session error:', error);
@@ -247,7 +255,6 @@ export async function getSession() {
     }
 
     return session;
-
   } catch (error: any) {
     logger.error('Unexpected get session error:', error);
     return null;
@@ -275,7 +282,6 @@ export async function refreshSession() {
     }
 
     return data.session;
-
   } catch (error: any) {
     logger.error('Unexpected refresh error:', error);
     return null;

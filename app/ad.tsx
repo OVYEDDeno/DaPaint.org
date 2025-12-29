@@ -1,4 +1,5 @@
 import { View, StyleSheet } from 'react-native';
+
 import AdScreen from '../components/swipe/AdScreen';
 import { theme } from '../constants/theme';
 
@@ -17,7 +18,7 @@ export default function AdRoute() {
 
 const styles = StyleSheet.create({
   container: {
-    flex: 1,
     backgroundColor: theme.colors.bg0,
+    flex: 1,
   },
 });

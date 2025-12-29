@@ -1,6 +1,6 @@
 // lib/api/dapaints.ts
-import { supabase } from "../supabase";
-import logger from "../logger";
+import logger from '../logger';
+import { supabase } from '../supabase';
 
 /**
  * Automatically report errors to the feedback table
@@ -11,8 +11,10 @@ async function reportError(
   severity: 'critical' | 'high' | 'medium' | 'low' = 'high'
 ) {
   try {
-    const { data: { user } } = await supabase.auth.getUser();
-    
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+
     const errorDetails = {
       context,
       error_name: error?.name,
@@ -21,20 +23,22 @@ async function reportError(
       error_details: error?.details,
       error_hint: error?.hint,
       timestamp: new Date().toISOString(),
-      user_agent: typeof window !== 'undefined' ? window.navigator.userAgent : 'unknown',
-      page_url: typeof window !== 'undefined' ? window.location.href : 'unknown'
+      user_agent:
+        typeof window !== 'undefined' ? window.navigator.userAgent : 'unknown',
+      page_url:
+        typeof window !== 'undefined' ? window.location.href : 'unknown',
     };
 
     await supabase.from('feedback').insert({
       user_id: user?.id || null,
-      feedback_type: 'error',  // CHANGED FROM 'type' to 'feedback_type'
+      feedback_type: 'error', // CHANGED FROM 'type' to 'feedback_type'
       severity,
       message: `${context}: ${error?.message || 'Unknown error'}`,
       error_code: error?.code || 'UNKNOWN',
       error_details: errorDetails,
       stack_trace: error?.stack || null,
       user_agent: errorDetails.user_agent,
-      page_url: errorDetails.page_url
+      page_url: errorDetails.page_url,
     });
 
     logger.debug('Error reported to backend:', context);
@@ -50,39 +54,37 @@ export { reportError };
 /**
  * Create a new DaPaint
  */
-export async function createDaPaint(
-  params: {
-    dapaint: string;
-    description: string | null;
-    how_winner_is_determined: string;
-    rules_of_dapaint: string | null;
-    location: string;
-    city: string;
-    zipcode: string;
-    starts_at: string;
-    ticket_price: number;
-    max_participants: number;
-    dapaint_type: '1v1' | 'team';
-  }
-): Promise<void> {
+export async function createDaPaint(params: {
+  dapaint: string;
+  description: string | null;
+  how_winner_is_determined: string;
+  rules_of_dapaint: string | null;
+  location: string;
+  city: string;
+  zipcode: string;
+  starts_at: string;
+  ticket_price: number;
+  max_participants: number;
+  dapaint_type: '1v1' | 'team';
+}): Promise<void> {
   try {
     const {
       data: { user },
     } = await supabase.auth.getUser();
-    if (!user) throw new Error("Not authenticated");
+    if (!user) throw new Error('Not authenticated');
 
     // Get user's current winstreak
     const { data: userData, error: userError } = await supabase
-      .from("users")
-      .select("display_name, current_winstreak")
-      .eq("id", user.id)
+      .from('users')
+      .select('display_name, current_winstreak')
+      .eq('id', user.id)
       .single();
 
     if (userError) throw userError;
-    if (!userData) throw new Error("User not found");
+    if (!userData) throw new Error('User not found');
 
     // Create the DaPaint
-    const { error } = await supabase.from("dapaints").insert({
+    const { error } = await supabase.from('dapaints').insert({
       host_id: user.id,
       host_display_name: userData.display_name,
       foe_id: null,
@@ -99,16 +101,16 @@ export async function createDaPaint(
       dapaint_type: params.dapaint_type,
       max_participants: params.max_participants,
       required_winstreak: userData.current_winstreak,
-      status: "scheduled",
+      status: 'scheduled',
       host_claimed_winner_id: null,
       foe_claimed_winner_id: null,
     });
 
     if (error) throw error;
 
-    logger.debug("Successfully created DaPaint");
+    logger.debug('Successfully created DaPaint');
   } catch (error: any) {
-    logger.error("Error creating DaPaint:", error);
+    logger.error('Error creating DaPaint:', error);
     throw error;
   }
 }
@@ -131,10 +133,15 @@ export type DaPaint = {
   ticket_price: string; // keep as string (per DB), parse in UI
   host_image_url?: string | null;
   foe_image_url?: string | null;
-  dapaint_type: "1v1" | "team";
+  dapaint_type: '1v1' | 'team';
   max_participants: number;
   required_winstreak: number;
-  status: "scheduled" | "pending_balance" | "live" | "in_progress" | "completed";
+  status:
+    | 'scheduled'
+    | 'pending_balance'
+    | 'live'
+    | 'in_progress'
+    | 'completed';
   host_claimed_winner_id: string | null;
   foe_claimed_winner_id: string | null;
   created_at: string;
@@ -151,16 +158,24 @@ export async function joinDaPaint(
   dapaintId: string,
   userId: string,
   displayName: string
-): Promise<{ success: boolean; message: string; shouldRemoveFromCurrent?: boolean; currentDaPaint?: any }> {
+): Promise<{
+  success: boolean;
+  message: string;
+  shouldRemoveFromCurrent?: boolean;
+  currentDaPaint?: any;
+}> {
   const formatRpcError = (err: any): string => {
-    if (!err) return "Unknown error";
-    if (typeof err === "string") return err;
-    if (err instanceof Error) return err.message || "Unknown error";
-    const message = typeof err.message === "string" ? err.message : "Request failed";
-    const details = typeof err.details === "string" ? err.details : "";
-    const hint = typeof err.hint === "string" ? err.hint : "";
-    const code = typeof err.code === "string" ? err.code : "";
-    return [message, code && `(${code})`, details, hint].filter(Boolean).join(" ");
+    if (!err) return 'Unknown error';
+    if (typeof err === 'string') return err;
+    if (err instanceof Error) return err.message || 'Unknown error';
+    const message =
+      typeof err.message === 'string' ? err.message : 'Request failed';
+    const details = typeof err.details === 'string' ? err.details : '';
+    const hint = typeof err.hint === 'string' ? err.hint : '';
+    const code = typeof err.code === 'string' ? err.code : '';
+    return [message, code && `(${code})`, details, hint]
+      .filter(Boolean)
+      .join(' ');
   };
 
   try {
@@ -169,31 +184,32 @@ export async function joinDaPaint(
     if (activeDaPaint) {
       const startsAt = new Date(activeDaPaint.starts_at);
       const now = new Date();
-      const hoursUntilStart = (startsAt.getTime() - now.getTime()) / (1000 * 60 * 60);
+      const hoursUntilStart =
+        (startsAt.getTime() - now.getTime()) / (1000 * 60 * 60);
       const isWithin48Hours = hoursUntilStart <= 48;
       const hasFoe = !!activeDaPaint.foe_id;
-      
+
       if (activeDaPaint.host_id === userId) {
         if (hasFoe && isWithin48Hours) {
           return {
             success: false,
             message: `You're hosting "${activeDaPaint.dapaint}" starting in ${Math.max(0, Math.floor(hoursUntilStart))}h. Leaving now = FORFEIT. You must complete or forfeit this DaPaint first.`,
             shouldRemoveFromCurrent: false,
-            currentDaPaint: activeDaPaint
+            currentDaPaint: activeDaPaint,
           };
         } else if (hasFoe) {
           return {
             success: false,
             message: `You're hosting "${activeDaPaint.dapaint}". Leaving now will delete it. Continue?`,
             shouldRemoveFromCurrent: true,
-            currentDaPaint: activeDaPaint
+            currentDaPaint: activeDaPaint,
           };
         } else {
           return {
             success: false,
             message: `You're hosting "${activeDaPaint.dapaint}" with no foe yet. Leaving now will delete it. Continue?`,
             shouldRemoveFromCurrent: true,
-            currentDaPaint: activeDaPaint
+            currentDaPaint: activeDaPaint,
           };
         }
       } else if (activeDaPaint.foe_id === userId) {
@@ -202,14 +218,14 @@ export async function joinDaPaint(
             success: false,
             message: `You're in "${activeDaPaint.dapaint}" starting in ${Math.max(0, Math.floor(hoursUntilStart))}h. Leaving now = FORFEIT. Complete this DaPaint first.`,
             shouldRemoveFromCurrent: false,
-            currentDaPaint: activeDaPaint
+            currentDaPaint: activeDaPaint,
           };
         } else {
           return {
             success: false,
             message: `You're in "${activeDaPaint.dapaint}". Leave or complete it first before joining another.`,
             shouldRemoveFromCurrent: true,
-            currentDaPaint: activeDaPaint
+            currentDaPaint: activeDaPaint,
           };
         }
       } else {
@@ -217,7 +233,7 @@ export async function joinDaPaint(
           success: false,
           message: `You're in team DaPaint "${activeDaPaint.dapaint}". Leave or complete it first before joining another.`,
           shouldRemoveFromCurrent: false,
-          currentDaPaint: activeDaPaint
+          currentDaPaint: activeDaPaint,
         };
       }
     }
@@ -226,26 +242,28 @@ export async function joinDaPaint(
     const { data, error } = await supabase.rpc('join_dapaint', {
       p_dapaint_id: dapaintId,
       p_user_id: userId,
-      p_display_name: displayName
+      p_display_name: displayName,
     });
 
     if (error) {
       const errorMsg = formatRpcError(error);
-      logger.error("Error joining DaPaint:", errorMsg, error);
-      
+      logger.error('Error joining DaPaint:', errorMsg, error);
+
       // Auto-report critical errors
       await reportError(error, 'joinDaPaint RPC call failed', 'critical');
-      
+
       return { success: false, message: errorMsg };
     }
 
     // Parse RPC result
     const result = Array.isArray(data) ? data[0] : data;
-    
-    if (typeof result === "object" && result) {
+
+    if (typeof result === 'object' && result) {
       const success = Boolean(result.success);
-      const message = result.message || (success ? "Successfully joined DaPaint" : "Failed to join DaPaint");
-      
+      const message =
+        result.message ||
+        (success ? 'Successfully joined DaPaint' : 'Failed to join DaPaint');
+
       if (!success) {
         // Report non-critical join failures
         await reportError(
@@ -254,20 +272,19 @@ export async function joinDaPaint(
           'medium'
         );
       }
-      
+
       return { success, message };
     }
 
-    logger.debug("Successfully joined DaPaint");
-    return { success: true, message: "Successfully joined DaPaint" };
-
+    logger.debug('Successfully joined DaPaint');
+    return { success: true, message: 'Successfully joined DaPaint' };
   } catch (error: any) {
     const errorMsg = formatRpcError(error);
-    logger.error("Error joining DaPaint:", errorMsg, error);
-    
+    logger.error('Error joining DaPaint:', errorMsg, error);
+
     // Auto-report unexpected errors
     await reportError(error, 'joinDaPaint unexpected error', 'critical');
-    
+
     return { success: false, message: errorMsg };
   }
 }
@@ -284,7 +301,7 @@ export async function canUserJoinDaPaint(
     const activeDaPaint = await getActiveDaPaint(userId);
 
     if (!activeDaPaint) {
-      return { canJoin: true, message: "" };
+      return { canJoin: true, message: '' };
     }
 
     // User has an active DaPaint - determine the message
@@ -296,9 +313,9 @@ export async function canUserJoinDaPaint(
     const isHost = activeDaPaint.host_id === userId;
     const hasFoe = !!activeDaPaint.foe_id;
 
-    let message = "";
+    let message = '';
 
-    if (activeDaPaint.dapaint_type === "1v1") {
+    if (activeDaPaint.dapaint_type === '1v1') {
       if (isHost && hasFoe && isWithin48Hours) {
         message = `You're in "${
           activeDaPaint.dapaint
@@ -325,8 +342,8 @@ export async function canUserJoinDaPaint(
 
     return { canJoin: false, message };
   } catch (error: any) {
-    logger.error("Error checking if user can join:", error);
-    return { canJoin: true, message: "" }; // Allow join on error
+    logger.error('Error checking if user can join:', error);
+    return { canJoin: true, message: '' }; // Allow join on error
   }
 }
 
@@ -346,17 +363,17 @@ export async function leaveDaPaint(
     const {
       data: { user },
     } = await supabase.auth.getUser();
-    if (!user) throw new Error("Not authenticated");
+    if (!user) throw new Error('Not authenticated');
 
     // Get DaPaint details
     const { data: dapaint, error: fetchError } = await supabase
-      .from("dapaints")
-      .select("*")
-      .eq("id", dapaintId)
+      .from('dapaints')
+      .select('*')
+      .eq('id', dapaintId)
       .single();
 
     if (fetchError) throw fetchError;
-    if (!dapaint) throw new Error("DaPaint not found");
+    if (!dapaint) throw new Error('DaPaint not found');
 
     const isHost = dapaint.host_id === user.id;
     const startsAt = new Date(dapaint.starts_at);
@@ -376,13 +393,13 @@ export async function leaveDaPaint(
 
         // Mark as completed with foe as winner
         const { error: updateError } = await supabase
-          .from("dapaints")
+          .from('dapaints')
           .update({
-            status: "completed",
+            status: 'completed',
             host_claimed_winner_id: winnerId,
             foe_claimed_winner_id: loserId,
           })
-          .eq("id", dapaintId);
+          .eq('id', dapaintId);
 
         if (updateError) throw updateError;
 
@@ -392,24 +409,24 @@ export async function leaveDaPaint(
         return {
           forfeit: true,
           deleted: false,
-          winner: dapaint.foe_display_name || "Foe",
+          winner: dapaint.foe_display_name || 'Foe',
         };
       }
 
       // HOST WITH FOE OUTSIDE 48 HOURS OR HOST WITHOUT FOE = DELETE
       // Delete all participants first (for team DaPaints)
-      if (dapaint.dapaint_type === "team") {
+      if (dapaint.dapaint_type === 'team') {
         await supabase
-          .from("dapaint_participants")
+          .from('dapaint_participants')
           .delete()
-          .eq("dapaint_id", dapaintId);
+          .eq('dapaint_id', dapaintId);
       }
 
       // Delete the DaPaint
       const { error: deleteError } = await supabase
-        .from("dapaints")
+        .from('dapaints')
         .delete()
-        .eq("id", dapaintId);
+        .eq('id', dapaintId);
 
       if (deleteError) throw deleteError;
 
@@ -419,7 +436,7 @@ export async function leaveDaPaint(
     // FOE LOGIC
     // Check if there's a foe
     let hasFoe: boolean;
-    if (dapaint.dapaint_type === "1v1") {
+    if (dapaint.dapaint_type === '1v1') {
       hasFoe = !!dapaint.foe_id;
     } else {
       hasFoe = await checkTeamHasFoes(dapaintId);
@@ -432,13 +449,13 @@ export async function leaveDaPaint(
 
       // Mark as completed
       const { error: updateError } = await supabase
-        .from("dapaints")
+        .from('dapaints')
         .update({
-          status: "completed",
+          status: 'completed',
           host_claimed_winner_id: winnerId,
           foe_claimed_winner_id: loserId,
         })
-        .eq("id", dapaintId);
+        .eq('id', dapaintId);
 
       if (updateError) throw updateError;
 
@@ -453,31 +470,31 @@ export async function leaveDaPaint(
     }
 
     // FOE CAN LEAVE FREELY - Just remove from DaPaint
-    if (dapaint.dapaint_type === "1v1") {
+    if (dapaint.dapaint_type === '1v1') {
       // Clear foe fields
       const { error: updateError } = await supabase
-        .from("dapaints")
+        .from('dapaints')
         .update({
           foe_id: null,
           foe_display_name: null,
         })
-        .eq("id", dapaintId);
+        .eq('id', dapaintId);
 
       if (updateError) throw updateError;
     } else {
       // Remove from participants
       const { error: deleteError } = await supabase
-        .from("dapaint_participants")
+        .from('dapaint_participants')
         .delete()
-        .eq("dapaint_id", dapaintId)
-        .eq("user_id", user.id);
+        .eq('dapaint_id', dapaintId)
+        .eq('user_id', user.id);
 
       if (deleteError) throw deleteError;
     }
 
     return { forfeit: false, deleted: false };
   } catch (error: any) {
-    logger.error("Error leaving DaPaint:", error);
+    logger.error('Error leaving DaPaint:', error);
     throw error;
   }
 }
@@ -487,14 +504,14 @@ export async function leaveDaPaint(
  */
 async function checkTeamHasFoes(dapaintId: string): Promise<boolean> {
   const { data: participants } = await supabase
-    .from("dapaint_participants")
-    .select("team")
-    .eq("dapaint_id", dapaintId);
+    .from('dapaint_participants')
+    .select('team')
+    .eq('dapaint_id', dapaintId);
 
   if (!participants || participants.length < 2) return false;
 
-  const hasHost = participants.some((p) => p.team === "host");
-  const hasFoe = participants.some((p) => p.team === "foe");
+  const hasHost = participants.some(p => p.team === 'host');
+  const hasFoe = participants.some(p => p.team === 'foe');
 
   return hasHost && hasFoe;
 }
@@ -507,11 +524,11 @@ async function checkTeamHasFoes(dapaintId: string): Promise<boolean> {
 async function getActiveDaPaint(userId: string): Promise<any | null> {
   try {
     const { data: as1v1, error: error1v1 } = await supabase
-      .from("dapaints")
-      .select("*")
+      .from('dapaints')
+      .select('*')
       .or(`host_id.eq.${userId},foe_id.eq.${userId}`)
-      .in("status", ["scheduled", "pending_balance", "live"])
-      .order("created_at", { ascending: false });
+      .in('status', ['scheduled', 'pending_balance', 'live'])
+      .order('created_at', { ascending: false });
 
     if (error1v1) {
       await reportError(error1v1, 'getActiveDaPaint query failed', 'high');
@@ -523,27 +540,35 @@ async function getActiveDaPaint(userId: string): Promise<any | null> {
     }
 
     const { data: teamParticipants, error: teamError } = await supabase
-      .from("dapaint_participants")
-      .select("dapaint_id")
-      .eq("user_id", userId);
+      .from('dapaint_participants')
+      .select('dapaint_id')
+      .eq('user_id', userId);
 
     if (teamError) {
-      await reportError(teamError, 'getActiveDaPaint team query failed', 'high');
+      await reportError(
+        teamError,
+        'getActiveDaPaint team query failed',
+        'high'
+      );
       throw teamError;
     }
 
     if (teamParticipants && teamParticipants.length > 0) {
-      const dapaintIds = teamParticipants.map((p) => p.dapaint_id);
+      const dapaintIds = teamParticipants.map(p => p.dapaint_id);
 
       const { data: teamDaPaints, error: dapaintsError } = await supabase
-        .from("dapaints")
-        .select("*")
-        .in("id", dapaintIds)
-        .in("status", ["scheduled", "pending_balance", "live"])
-        .order("created_at", { ascending: false });
+        .from('dapaints')
+        .select('*')
+        .in('id', dapaintIds)
+        .in('status', ['scheduled', 'pending_balance', 'live'])
+        .order('created_at', { ascending: false });
 
       if (dapaintsError) {
-        await reportError(dapaintsError, 'getActiveDaPaint team dapaints query failed', 'high');
+        await reportError(
+          dapaintsError,
+          'getActiveDaPaint team dapaints query failed',
+          'high'
+        );
         throw dapaintsError;
       }
 
@@ -554,7 +579,7 @@ async function getActiveDaPaint(userId: string): Promise<any | null> {
 
     return null;
   } catch (error: any) {
-    logger.error("Error getting active DaPaint:", error);
+    logger.error('Error getting active DaPaint:', error);
     return null;
   }
 }
@@ -573,9 +598,9 @@ export async function getAvailableDaPaints(userId: string): Promise<DaPaint[]> {
   try {
     // Get user's EXACT winstreak
     const { data: userData, error: userError } = await supabase
-      .from("users")
-      .select("current_winstreak")
-      .eq("id", userId)
+      .from('users')
+      .select('current_winstreak')
+      .eq('id', userId)
       .single();
 
     if (userError) throw userError;
@@ -584,14 +609,14 @@ export async function getAvailableDaPaints(userId: string): Promise<DaPaint[]> {
 
     // Get all scheduled DaPaints with EXACT same winstreak (must be equal)
     const { data: dapaints, error } = await supabase
-      .from("dapaints")
-      .select("*")
-      .eq("status", "scheduled")
-      .eq("required_winstreak", userWinstreak)
-      .order("created_at", { ascending: false });
-  
+      .from('dapaints')
+      .select('*')
+      .eq('status', 'scheduled')
+      .eq('required_winstreak', userWinstreak)
+      .order('created_at', { ascending: false });
+
     if (error) throw error;
-  
+
     const rows = dapaints ?? [];
 
     const filtered: DaPaint[] = [];
@@ -607,7 +632,7 @@ export async function getAvailableDaPaints(userId: string): Promise<DaPaint[]> {
         continue;
       }
 
-      if (dapaint.dapaint_type === "1v1") {
+      if (dapaint.dapaint_type === '1v1') {
         // Skip 1v1 that already has both host AND foe
         if (dapaint.foe_id) {
           continue;
@@ -615,12 +640,12 @@ export async function getAvailableDaPaints(userId: string): Promise<DaPaint[]> {
       } else {
         // Team DaPaint logic
         const { data: participants } = await supabase
-          .from("dapaint_participants")
-          .select("user_id, team")
-          .eq("dapaint_id", dapaint.id);
+          .from('dapaint_participants')
+          .select('user_id, team')
+          .eq('dapaint_id', dapaint.id);
 
         // Skip if user is already a participant
-        const isParticipant = participants?.some((p) => p.user_id === userId);
+        const isParticipant = participants?.some(p => p.user_id === userId);
         if (isParticipant) continue;
 
         // Skip if team is full (reached max_participants)
@@ -630,10 +655,8 @@ export async function getAvailableDaPaints(userId: string): Promise<DaPaint[]> {
 
         // Skip if teams are balanced (equal number on both sides)
         if (participants && participants.length > 1) {
-          const hostCount = participants.filter(
-            (p) => p.team === "host"
-          ).length;
-          const foeCount = participants.filter((p) => p.team === "foe").length;
+          const hostCount = participants.filter(p => p.team === 'host').length;
+          const foeCount = participants.filter(p => p.team === 'foe').length;
 
           // If balanced and at least 2 people, don't show
           if (hostCount === foeCount && hostCount > 0) {
@@ -647,7 +670,7 @@ export async function getAvailableDaPaints(userId: string): Promise<DaPaint[]> {
 
     return filtered;
   } catch (error: any) {
-    logger.error("Error getting available DaPaints:", error);
+    logger.error('Error getting available DaPaints:', error);
     throw error;
   }
 }
@@ -661,9 +684,9 @@ export async function getExploreDaPaints(userId: string): Promise<DaPaint[]> {
   try {
     // Get user's EXACT winstreak and zipcode
     const { data: userData, error: userError } = await supabase
-      .from("users")
-      .select("current_winstreak, zipcode")
-      .eq("id", userId)
+      .from('users')
+      .select('current_winstreak, zipcode')
+      .eq('id', userId)
       .single();
 
     if (userError) throw userError;
@@ -673,14 +696,14 @@ export async function getExploreDaPaints(userId: string): Promise<DaPaint[]> {
 
     // Get all scheduled DaPaints with EXACT same winstreak (no zipcode filter)
     const { data: dapaints, error } = await supabase
-      .from("dapaints")
-      .select("*")
-      .eq("status", "scheduled")
-      .eq("required_winstreak", userWinstreak)
-      .order("created_at", { ascending: false });
-  
+      .from('dapaints')
+      .select('*')
+      .eq('status', 'scheduled')
+      .eq('required_winstreak', userWinstreak)
+      .order('created_at', { ascending: false });
+
     if (error) throw error;
-  
+
     const rows = dapaints ?? [];
 
     const filtered: DaPaint[] = [];
@@ -702,7 +725,7 @@ export async function getExploreDaPaints(userId: string): Promise<DaPaint[]> {
         continue;
       }
 
-      if (dapaint.dapaint_type === "1v1") {
+      if (dapaint.dapaint_type === '1v1') {
         // Skip 1v1 that already has both host AND foe
         if (dapaint.foe_id) {
           continue;
@@ -710,12 +733,12 @@ export async function getExploreDaPaints(userId: string): Promise<DaPaint[]> {
       } else {
         // Team DaPaint logic
         const { data: participants } = await supabase
-          .from("dapaint_participants")
-          .select("user_id, team")
-          .eq("dapaint_id", dapaint.id);
+          .from('dapaint_participants')
+          .select('user_id, team')
+          .eq('dapaint_id', dapaint.id);
 
         // Skip if user is already a participant
-        const isParticipant = participants?.some((p) => p.user_id === userId);
+        const isParticipant = participants?.some(p => p.user_id === userId);
         if (isParticipant) continue;
 
         // Skip if team is full (reached max_participants)
@@ -725,10 +748,8 @@ export async function getExploreDaPaints(userId: string): Promise<DaPaint[]> {
 
         // Skip if teams are balanced (equal number on both sides)
         if (participants && participants.length > 1) {
-          const hostCount = participants.filter(
-            (p) => p.team === "host"
-          ).length;
-          const foeCount = participants.filter((p) => p.team === "foe").length;
+          const hostCount = participants.filter(p => p.team === 'host').length;
+          const foeCount = participants.filter(p => p.team === 'foe').length;
 
           // If balanced and at least 2 people, don't show
           if (hostCount === foeCount && hostCount > 0) {
@@ -742,7 +763,7 @@ export async function getExploreDaPaints(userId: string): Promise<DaPaint[]> {
 
     return filtered;
   } catch (error: any) {
-    logger.error("Error getting explore DaPaints:", error);
+    logger.error('Error getting explore DaPaints:', error);
     throw error;
   }
 }
@@ -751,9 +772,9 @@ export async function getLuckyDaPaints(userId: string): Promise<DaPaint[]> {
   try {
     // Get user's zipcode (but not winstreak, to show all winstreaks)
     const { data: userData, error: userError } = await supabase
-      .from("users")
-      .select("zipcode")
-      .eq("id", userId)
+      .from('users')
+      .select('zipcode')
+      .eq('id', userId)
       .single();
 
     if (userError) throw userError;
@@ -763,13 +784,13 @@ export async function getLuckyDaPaints(userId: string): Promise<DaPaint[]> {
     // Get all available DaPaints (ANY winstreak, different zipcode)
     // Include scheduled, pending_balance, and live DaPaints (not completed)
     const { data: dapaints, error } = await supabase
-      .from("dapaints")
-      .select("*")
-      .in("status", ["scheduled", "pending_balance", "live"])
-      .order("created_at", { ascending: false });
-    
+      .from('dapaints')
+      .select('*')
+      .in('status', ['scheduled', 'pending_balance', 'live'])
+      .order('created_at', { ascending: false });
+
     if (error) throw error;
-    
+
     const rows = dapaints ?? [];
 
     const filtered: DaPaint[] = [];
@@ -791,7 +812,7 @@ export async function getLuckyDaPaints(userId: string): Promise<DaPaint[]> {
         continue;
       }
 
-      if (dapaint.dapaint_type === "1v1") {
+      if (dapaint.dapaint_type === '1v1') {
         // Skip 1v1 that already has both host AND foe
         if (dapaint.foe_id) {
           continue;
@@ -799,12 +820,12 @@ export async function getLuckyDaPaints(userId: string): Promise<DaPaint[]> {
       } else {
         // Team DaPaint logic
         const { data: participants } = await supabase
-          .from("dapaint_participants")
-          .select("user_id, team")
-          .eq("dapaint_id", dapaint.id);
+          .from('dapaint_participants')
+          .select('user_id, team')
+          .eq('dapaint_id', dapaint.id);
 
         // Skip if user is already a participant
-        const isParticipant = participants?.some((p) => p.user_id === userId);
+        const isParticipant = participants?.some(p => p.user_id === userId);
         if (isParticipant) continue;
 
         // Skip if team is full (reached max_participants)
@@ -814,10 +835,8 @@ export async function getLuckyDaPaints(userId: string): Promise<DaPaint[]> {
 
         // Skip if teams are balanced (equal number on both sides)
         if (participants && participants.length > 1) {
-          const hostCount = participants.filter(
-            (p) => p.team === "host"
-          ).length;
-          const foeCount = participants.filter((p) => p.team === "foe").length;
+          const hostCount = participants.filter(p => p.team === 'host').length;
+          const foeCount = participants.filter(p => p.team === 'foe').length;
 
           // If balanced and at least 2 people, don't show
           if (hostCount === foeCount && hostCount > 0) {
@@ -831,7 +850,7 @@ export async function getLuckyDaPaints(userId: string): Promise<DaPaint[]> {
 
     return filtered;
   } catch (error: any) {
-    logger.error("Error getting lucky DaPaints:", error);
+    logger.error('Error getting lucky DaPaints:', error);
     throw error;
   }
 }
@@ -841,19 +860,19 @@ export async function getLuckyDaPaints(userId: string): Promise<DaPaint[]> {
  */
 export async function getTeamComposition(dapaintId: string) {
   const { data: participants, error } = await supabase
-    .from("dapaint_participants")
+    .from('dapaint_participants')
     .select(
       `
       *,
       user:users(display_name)
     `
     )
-    .eq("dapaint_id", dapaintId);
+    .eq('dapaint_id', dapaintId);
 
   if (error) throw error;
 
-  const hostTeam = participants?.filter((p) => p.team === "host") || [];
-  const foeTeam = participants?.filter((p) => p.team === "foe") || [];
+  const hostTeam = participants?.filter(p => p.team === 'host') || [];
+  const foeTeam = participants?.filter(p => p.team === 'foe') || [];
 
   return {
     hostTeam,
@@ -870,33 +889,33 @@ export async function switchTeam(dapaintId: string): Promise<void> {
     const {
       data: { user },
     } = await supabase.auth.getUser();
-    if (!user) throw new Error("Not authenticated");
+    if (!user) throw new Error('Not authenticated');
 
     // Get current team
     const { data: participant, error: fetchError } = await supabase
-      .from("dapaint_participants")
-      .select("team")
-      .eq("dapaint_id", dapaintId)
-      .eq("user_id", user.id)
+      .from('dapaint_participants')
+      .select('team')
+      .eq('dapaint_id', dapaintId)
+      .eq('user_id', user.id)
       .single();
 
     if (fetchError) throw fetchError;
-    if (!participant) throw new Error("You are not in this DaPaint");
+    if (!participant) throw new Error('You are not in this DaPaint');
 
-    const newTeam = participant.team === "host" ? "foe" : "host";
+    const newTeam = participant.team === 'host' ? 'foe' : 'host';
 
     // Update team
     const { error: updateError } = await supabase
-      .from("dapaint_participants")
+      .from('dapaint_participants')
       .update({ team: newTeam })
-      .eq("dapaint_id", dapaintId)
-      .eq("user_id", user.id);
+      .eq('dapaint_id', dapaintId)
+      .eq('user_id', user.id);
 
     if (updateError) throw updateError;
 
-    logger.debug("Successfully switched teams");
+    logger.debug('Successfully switched teams');
   } catch (error: any) {
-    logger.error("Error switching teams:", error);
+    logger.error('Error switching teams:', error);
     throw error;
   }
 }
@@ -907,27 +926,27 @@ export async function switchTeam(dapaintId: string): Promise<void> {
 export async function canEditDaPaint(dapaintId: string): Promise<boolean> {
   try {
     const { data: dapaint } = await supabase
-      .from("dapaints")
-      .select("dapaint_type, foe_id")
-      .eq("id", dapaintId)
+      .from('dapaints')
+      .select('dapaint_type, foe_id')
+      .eq('id', dapaintId)
       .single();
 
     if (!dapaint) return false;
 
-    if (dapaint.dapaint_type === "1v1") {
+    if (dapaint.dapaint_type === '1v1') {
       // Can edit if no one has joined as foe
       return !dapaint.foe_id;
     } else {
       // Can edit if only host is in participants
       const { data: participants } = await supabase
-        .from("dapaint_participants")
-        .select("id")
-        .eq("dapaint_id", dapaintId);
+        .from('dapaint_participants')
+        .select('id')
+        .eq('dapaint_id', dapaintId);
 
       return (participants?.length || 0) <= 1;
     }
   } catch (error) {
-    logger.error("Error checking if can edit:", error);
+    logger.error('Error checking if can edit:', error);
     return false;
   }
 }
@@ -952,7 +971,7 @@ export async function editDaPaint(
 ): Promise<void> {
   try {
     const { error } = await supabase
-      .from("dapaints")
+      .from('dapaints')
       .update({
         dapaint: params.dapaint,
         description: params.description,
@@ -966,13 +985,13 @@ export async function editDaPaint(
         max_participants: params.max_participants,
         updated_at: new Date().toISOString(),
       })
-      .eq("id", id);
+      .eq('id', id);
 
     if (error) throw error;
 
-    logger.debug("Successfully updated DaPaint");
+    logger.debug('Successfully updated DaPaint');
   } catch (error: any) {
-    logger.error("Error updating DaPaint:", error);
+    logger.error('Error updating DaPaint:', error);
     throw error;
   }
 }
@@ -990,20 +1009,20 @@ async function updateWinstreaks(
     if (isDraw && winnerId && loserId) {
       // Both users lose 1 winstreak in a draw
       await supabase
-        .from("users")
+        .from('users')
         .update({
-          current_winstreak: supabase.rpc("GREATEST(0, current_winstreak - 1)"),
+          current_winstreak: supabase.rpc('GREATEST(0, current_winstreak - 1)'),
         })
-        .in("id", [winnerId, loserId]);
-      
-      logger.debug("Both users lost 1 winstreak in draw");
+        .in('id', [winnerId, loserId]);
+
+      logger.debug('Both users lost 1 winstreak in draw');
     } else if (winnerId && loserId) {
       // Regular completion - winner gains, loser resets
       // Get current winstreaks
       const { data: winnerData } = await supabase
-        .from("users")
-        .select("current_winstreak, highest_winstreak")
-        .eq("id", winnerId)
+        .from('users')
+        .select('current_winstreak, highest_winstreak')
+        .eq('id', winnerId)
         .single();
 
       // Update winner
@@ -1014,27 +1033,27 @@ async function updateWinstreaks(
       );
 
       await supabase
-        .from("users")
+        .from('users')
         .update({
           current_winstreak: newWinnerStreak,
           highest_winstreak: newWinnerLongest,
         })
-        .eq("id", winnerId);
+        .eq('id', winnerId);
 
       // Update loser (reset winstreak)
       await supabase
-        .from("users")
+        .from('users')
         .update({
           current_winstreak: 0,
         })
-        .eq("id", loserId);
-      
-      logger.debug("Winstreaks updated for winner/loser");
+        .eq('id', loserId);
+
+      logger.debug('Winstreaks updated for winner/loser');
     }
 
-    logger.debug("Winstreaks updated successfully");
+    logger.debug('Winstreaks updated successfully');
   } catch (error) {
-    logger.error("Error updating winstreaks:", error);
+    logger.error('Error updating winstreaks:', error);
     throw error;
   }
 }

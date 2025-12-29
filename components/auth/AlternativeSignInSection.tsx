@@ -1,5 +1,6 @@
 import React from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
+
 import {
   DaPaintSpacing,
   DaPaintRadius,
@@ -12,9 +13,9 @@ interface AlternativeSignInSectionProps {
   onEmailPhonePress: () => void;
 }
 
-export const AlternativeSignInSection: React.FC<AlternativeSignInSectionProps> = ({
-  onEmailPhonePress,
-}) => {
+export const AlternativeSignInSection: React.FC<
+  AlternativeSignInSectionProps
+> = ({ onEmailPhonePress }) => {
   return (
     <View style={styles.container}>
       <Pressable
@@ -31,26 +32,26 @@ export const AlternativeSignInSection: React.FC<AlternativeSignInSectionProps> =
 };
 
 const styles = StyleSheet.create({
-  container: {
-    gap: DaPaintSpacing.xxs,
-    paddingTop: DaPaintSpacing.xxs,
-  },
   altButton: {
+    alignItems: 'center',
     backgroundColor: DaPaintButtons.secondary.background,
-    borderWidth: 1,
     borderColor: DaPaintButtons.secondary.border,
     borderRadius: DaPaintRadius.sm,
-    paddingVertical: DaPaintSpacing.xs,
+    borderWidth: 1,
     paddingHorizontal: DaPaintSpacing.sm,
-    alignItems: 'center',
+    paddingVertical: DaPaintSpacing.xs,
     ...DaPaintShadows.small,
   },
   altButtonPressed: {
-    transform: [{ scale: 0.97 }],
     opacity: 0.9,
+    transform: [{ scale: 0.97 }],
   },
   altButtonText: {
     ...DaPaintTypography.labelMedium,
     color: DaPaintButtons.secondary.text,
+  },
+  container: {
+    gap: DaPaintSpacing.xxs,
+    paddingTop: DaPaintSpacing.xxs,
   },
 });

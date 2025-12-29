@@ -1,11 +1,12 @@
 ﻿// lib/DaPaintDataManager.ts
 // Centralized DaPaint data management with preloading and caching
 
-import { supabase } from './supabase';
-import logger from './logger';
-import type { DaPaint } from './api/dapaints';
-import { userDataManager } from './UserDataManager';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+
+import type { DaPaint } from './api/dapaints';
+import logger from './logger';
+import { supabase } from './supabase';
+import { userDataManager } from './UserDataManager';
 
 // Enhanced cache with persistence and smarter invalidation
 class DaPaintDataManager {
@@ -46,11 +47,11 @@ class DaPaintDataManager {
       await this.storageLoadPromise;
     }
     const now = Date.now();
-    
+
     // Return cached data if still valid
     if (
       this.feedData.length > 0 &&
-      (now - this.lastFeedFetchTime) < this.cacheExpiry
+      now - this.lastFeedFetchTime < this.cacheExpiry
     ) {
       logger.debug('Returning cached feed DaPaints');
       return this.feedData.slice(0, limit);
@@ -63,7 +64,12 @@ class DaPaintDataManager {
     }
 
     // Start loading and store the promise
-    this.feedLoadingPromise = this.fetchFeedDaPaints(userWinstreak, userZipcode, userCity, limit * 2)
+    this.feedLoadingPromise = this.fetchFeedDaPaints(
+      userWinstreak,
+      userZipcode,
+      userCity,
+      limit * 2
+    )
       .then(data => {
         this.feedData = data;
         this.lastFeedFetchTime = Date.now();
@@ -96,23 +102,30 @@ class DaPaintDataManager {
     limit: number = 20
   ): Promise<DaPaint[]> {
     try {
-      const { data: { user } } = await supabase.auth.getUser();
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
       if (!user) return [];
 
       logger.debug('Feed Query Debug Info:');
       const normalizedZip = this.normalizeZip(userZipcode);
       logger.debug('User ID:', user.id);
       logger.debug('User Winstreak:', userWinstreak);
-      logger.debug('User Zipcode:', normalizedZip || 'NOT PROVIDED (Lucky Mode)');
+      logger.debug(
+        'User Zipcode:',
+        normalizedZip || 'NOT PROVIDED (Lucky Mode)'
+      );
       logger.debug('User City:', userCity || 'NOT PROVIDED');
 
       // Base query - always filter by winstreak and exclude user's own DaPaints
       let query = supabase
         .from('dapaints')
-        .select(`
+        .select(
+          `
           *,
           host:users!dapaints_host_id_fkey(zipcode, city)
-        `)
+        `
+        )
         .eq('status', 'scheduled')
         .eq('required_winstreak', userWinstreak)
         .is('foe_id', null) // Only show DaPaints that are still joinable
@@ -130,10 +143,12 @@ class DaPaintDataManager {
         logger.debug('Looking for DaPaints where:');
         logger.debug('- DaPaint.zipcode =', normalizedZip, 'OR');
         logger.debug('- Host.zipcode =', normalizedZip);
-        
+
         // This filter can't be done directly in Supabase query
         // We need to fetch all and filter in JavaScript
-        query = query.order('created_at', { ascending: false }).limit(limit * 3); // Fetch more to filter
+        query = query
+          .order('created_at', { ascending: false })
+          .limit(limit * 3); // Fetch more to filter
       } else {
         // Option 1: Lucky Mode - no location filter
         logger.debug('🎲 LUCKY MODE: Showing DaPaints from ALL locations');
@@ -142,32 +157,39 @@ class DaPaintDataManager {
 
       const { data, error } = await query;
       if (error) throw error;
-      
+
       // Filter results in JavaScript if zipcode filtering is needed
       let filteredData = data || [];
-      
+
       if (normalizedZip && data) {
-        filteredData = data.filter((dapaint: any) => {
-          const dapaintZipcode = this.normalizeZip(dapaint.zipcode);
-          const hostZip = this.normalizeZip(dapaint.host?.zipcode);
-          
-          // Match if EITHER DaPaint zipcode OR Host zipcode matches user's zipcode
-          const matches = dapaintZipcode === normalizedZip || hostZip === normalizedZip;
-          
-          if (matches) {
-            logger.debug(`✅ Match: "${dapaint.dapaint}" (DaPaint: ${dapaintZipcode}, Host: ${hostZip})`);
-          }
-          
-          return matches;
-        }).slice(0, limit); // Limit to requested number
+        filteredData = data
+          .filter((dapaint: any) => {
+            const dapaintZipcode = this.normalizeZip(dapaint.zipcode);
+            const hostZip = this.normalizeZip(dapaint.host?.zipcode);
+
+            // Match if EITHER DaPaint zipcode OR Host zipcode matches user's zipcode
+            const matches =
+              dapaintZipcode === normalizedZip || hostZip === normalizedZip;
+
+            if (matches) {
+              logger.debug(
+                `✅ Match: "${dapaint.dapaint}" (DaPaint: ${dapaintZipcode}, Host: ${hostZip})`
+              );
+            }
+
+            return matches;
+          })
+          .slice(0, limit); // Limit to requested number
       }
-      
+
       logger.debug('✅ Results found:', filteredData.length);
       if (filteredData && filteredData.length > 0) {
         logger.debug('📊 DaPaints returned:');
         filteredData.forEach((dapaint: any) => {
           const hostZip = this.normalizeZip(dapaint.host?.zipcode) || 'unknown';
-          logger.debug(`- ${dapaint.dapaint} (DaPaint: ${dapaint.city}, ${dapaint.zipcode} | Host: ${hostZip}) [ID: ${dapaint.id}]`);
+          logger.debug(
+            `- ${dapaint.dapaint} (DaPaint: ${dapaint.city}, ${dapaint.zipcode} | Host: ${hostZip}) [ID: ${dapaint.id}]`
+          );
         });
       } else {
         logger.debug('⚠️ No DaPaints found with these filters');
@@ -192,11 +214,11 @@ class DaPaintDataManager {
       await this.storageLoadPromise;
     }
     const now = Date.now();
-    
+
     // Return cached data if still valid
     if (
       this.activeDaPaint &&
-      (now - this.lastActiveFetchTime) < this.cacheExpiry
+      now - this.lastActiveFetchTime < this.cacheExpiry
     ) {
       logger.debug('Returning cached active DaPaint');
       return this.activeDaPaint;
@@ -204,7 +226,9 @@ class DaPaintDataManager {
 
     // If already loading, return the existing promise
     if (this.activeLoadingPromise) {
-      logger.debug('Active DaPaint already loading, returning existing promise');
+      logger.debug(
+        'Active DaPaint already loading, returning existing promise'
+      );
       return this.activeLoadingPromise;
     }
 
@@ -237,7 +261,9 @@ class DaPaintDataManager {
    */
   private async fetchActiveDaPaint(): Promise<DaPaint | null> {
     try {
-      const { data: { user } } = await supabase.auth.getUser();
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
       if (!user) return null;
 
       // Check if hosting - get the most recently created one
@@ -249,13 +275,16 @@ class DaPaintDataManager {
         .order('created_at', { ascending: false });
 
       if (hostedError) throw hostedError;
-      
+
       // Log data integrity issue if found
       if (hostedDaPaints && hostedDaPaints.length > 1) {
-        logger.warn(`Data Integrity Violation: User ${user.id} is hosting ${hostedDaPaints.length} active DaPaints. This violates the exclusivity constraint.`);
+        logger.warn(
+          `Data Integrity Violation: User ${user.id} is hosting ${hostedDaPaints.length} active DaPaints. This violates the exclusivity constraint.`
+        );
       }
-      
-      if (hostedDaPaints && hostedDaPaints.length > 0) return hostedDaPaints[0] as DaPaint;
+
+      if (hostedDaPaints && hostedDaPaints.length > 0)
+        return hostedDaPaints[0] as DaPaint;
 
       // Check if foe in 1v1 - get the most recently created one
       const { data: foeDaPaints, error: foeError } = await supabase
@@ -266,13 +295,16 @@ class DaPaintDataManager {
         .order('created_at', { ascending: false });
 
       if (foeError) throw foeError;
-      
+
       // Log data integrity issue if found
       if (foeDaPaints && foeDaPaints.length > 1) {
-        logger.warn(`Data Integrity Violation: User ${user.id} is a foe in ${foeDaPaints.length} active DaPaints. This violates the exclusivity constraint.`);
+        logger.warn(
+          `Data Integrity Violation: User ${user.id} is a foe in ${foeDaPaints.length} active DaPaints. This violates the exclusivity constraint.`
+        );
       }
-      
-      if (foeDaPaints && foeDaPaints.length > 0) return foeDaPaints[0] as DaPaint;
+
+      if (foeDaPaints && foeDaPaints.length > 0)
+        return foeDaPaints[0] as DaPaint;
 
       // Check if in team DaPaint - get the most recently joined one
       const { data: participations, error: participationError } = await supabase
@@ -281,12 +313,14 @@ class DaPaintDataManager {
         .eq('user_id', user.id);
 
       if (participationError) throw participationError;
-      
+
       // Log data integrity issue if found
       if (participations && participations.length > 1) {
-        logger.warn(`Data Integrity Violation: User ${user.id} is participating in ${participations.length} team DaPaints. This violates the exclusivity constraint.`);
+        logger.warn(
+          `Data Integrity Violation: User ${user.id} is participating in ${participations.length} team DaPaints. This violates the exclusivity constraint.`
+        );
       }
-      
+
       if (participations.length === 0 || !participations[0]) return null;
 
       const { data: teamDaPaints, error: teamError } = await supabase
@@ -296,14 +330,17 @@ class DaPaintDataManager {
         .in('status', ['scheduled', 'pending_balance', 'live']);
 
       if (teamError) throw teamError;
-      
+
       // Log data integrity issue if found
       if (teamDaPaints && teamDaPaints.length > 1) {
-        logger.warn(`Data Integrity Violation: Found ${teamDaPaints.length} team DaPaints for participation ID ${participations[0].dapaint_id}. This indicates a data issue.`);
+        logger.warn(
+          `Data Integrity Violation: Found ${teamDaPaints.length} team DaPaints for participation ID ${participations[0].dapaint_id}. This indicates a data issue.`
+        );
       }
-      
-      if (teamDaPaints && teamDaPaints.length > 0) return teamDaPaints[0] as DaPaint;
-      
+
+      if (teamDaPaints && teamDaPaints.length > 0)
+        return teamDaPaints[0] as DaPaint;
+
       return null;
     } catch (error) {
       logger.error('Error fetching active DaPaint:', error);
@@ -316,14 +353,14 @@ class DaPaintDataManager {
    */
   async preloadFeedData(): Promise<void> {
     logger.debug('Preloading feed data...');
-    
+
     // Get user data first
     const userData = await userDataManager.getUserData();
     if (!userData) {
       logger.debug('No user data available for preloading feed');
       return;
     }
-    
+
     // Start loading feed data but don't wait for it
     this.getFeedDaPaints(
       userData.current_winstreak,
@@ -340,7 +377,7 @@ class DaPaintDataManager {
    */
   async preloadActiveDaPaint(): Promise<void> {
     logger.debug('Preloading active DaPaint data...');
-    
+
     // Start loading but don't wait for it
     this.getActiveDaPaint().catch(error => {
       logger.error('Error preloading active DaPaint:', error);
@@ -378,13 +415,17 @@ class DaPaintDataManager {
   /**
    * Save feed data to AsyncStorage for persistence
    */
-  private saveFeedToStorage(userWinstreak: number, userZipcode?: string, userCity?: string): void {
+  private saveFeedToStorage(
+    userWinstreak: number,
+    userZipcode?: string,
+    userCity?: string
+  ): void {
     try {
       if (this.feedData.length > 0) {
         const cacheData = {
           data: this.feedData,
           timestamp: this.lastFeedFetchTime,
-          params: { userWinstreak, userZipcode, userCity }
+          params: { userWinstreak, userZipcode, userCity },
         };
         AsyncStorage.setItem(this.feedStorageKey, JSON.stringify(cacheData));
       }
@@ -401,7 +442,7 @@ class DaPaintDataManager {
       if (this.activeDaPaint) {
         const cacheData = {
           data: this.activeDaPaint,
-          timestamp: this.lastActiveFetchTime
+          timestamp: this.lastActiveFetchTime,
         };
         AsyncStorage.setItem(this.activeStorageKey, JSON.stringify(cacheData));
       }
@@ -419,9 +460,9 @@ class DaPaintDataManager {
       if (cached) {
         const cacheData = JSON.parse(cached);
         const now = Date.now();
-        
+
         // Check if cache is still valid
-        if ((now - cacheData.timestamp) < this.cacheExpiry) {
+        if (now - cacheData.timestamp < this.cacheExpiry) {
           this.feedData = cacheData.data;
           this.lastFeedFetchTime = cacheData.timestamp;
           logger.debug('Loaded feed data from storage cache');
@@ -441,9 +482,9 @@ class DaPaintDataManager {
       if (cached) {
         const cacheData = JSON.parse(cached);
         const now = Date.now();
-        
+
         // Check if cache is still valid
-        if ((now - cacheData.timestamp) < this.cacheExpiry) {
+        if (now - cacheData.timestamp < this.cacheExpiry) {
           this.activeDaPaint = cacheData.data;
           this.lastActiveFetchTime = cacheData.timestamp;
           logger.debug('Loaded active DaPaint from storage cache');
@@ -471,4 +512,3 @@ export const daPaintDataManager = new DaPaintDataManager();
 
 // Export the class for testing purposes
 export default DaPaintDataManager;
-

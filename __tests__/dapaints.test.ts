@@ -1,5 +1,10 @@
 // __tests__/dapaints.test.ts
-import { createDaPaint, joinDaPaint, getAvailableDaPaints, getActiveDaPaint } from '../lib/api/dapaints';
+import {
+  createDaPaint,
+  joinDaPaint,
+  getAvailableDaPaints,
+  getActiveDaPaint,
+} from '../lib/api/dapaints';
 
 jest.mock('../lib/supabase', () => ({
   supabase: {
@@ -115,19 +120,21 @@ describe('DaPaint API', () => {
         data: { user: null },
       });
 
-      await expect(createDaPaint({
-        dapaint: 'Test DaPaint',
-        description: 'Test description',
-        how_winner_is_determined: 'Majority vote',
-        rules_of_dapaint: 'Play fair',
-        location: 'Test Location',
-        city: 'Test City',
-        zipcode: '12345',
-        starts_at: '2023-12-25T10:00:00Z',
-        ticket_price: 10,
-        max_participants: 2,
-        dapaint_type: '1v1' as const,
-      })).rejects.toThrow('Not authenticated');
+      await expect(
+        createDaPaint({
+          dapaint: 'Test DaPaint',
+          description: 'Test description',
+          how_winner_is_determined: 'Majority vote',
+          rules_of_dapaint: 'Play fair',
+          location: 'Test Location',
+          city: 'Test City',
+          zipcode: '12345',
+          starts_at: '2023-12-25T10:00:00Z',
+          ticket_price: 10,
+          max_participants: 2,
+          dapaint_type: '1v1' as const,
+        })
+      ).rejects.toThrow('Not authenticated');
     });
   });
 
@@ -145,7 +152,11 @@ describe('DaPaint API', () => {
         error: null,
       });
 
-      const result = await joinDaPaint('dapaint-id-123', 'user-id-123', 'Test User');
+      const result = await joinDaPaint(
+        'dapaint-id-123',
+        'user-id-123',
+        'Test User'
+      );
 
       expect(result.success).toBe(true);
       expect(mockSupabase.rpc).toHaveBeenCalledWith('join_dapaint_safe', {
@@ -189,7 +200,11 @@ describe('DaPaint API', () => {
         return {};
       });
 
-      const result = await joinDaPaint('new-dapaint-id', 'user-id-123', 'Test User');
+      const result = await joinDaPaint(
+        'new-dapaint-id',
+        'user-id-123',
+        'Test User'
+      );
 
       expect(result.success).toBe(false);
       expect(result.message).toContain('Existing DaPaint');
@@ -208,7 +223,7 @@ describe('DaPaint API', () => {
           required_winstreak: 5,
           dapaint_type: '1v1',
           // ... other properties
-        }
+        },
       ];
 
       const usersQuery = {
@@ -243,7 +258,7 @@ describe('DaPaint API', () => {
   });
 
   describe('getActiveDaPaint', () => {
-    it('should return user\'s active DaPaint when exists', async () => {
+    it("should return user's active DaPaint when exists", async () => {
       const mockDaPaint = {
         id: 'active-dapaint-id',
         host_id: 'user-id-123',

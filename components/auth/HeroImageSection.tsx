@@ -9,14 +9,12 @@ interface HeroImageSectionProps {
   exitStyle?: object;
 }
 
-export const HeroImageSection: React.FC<HeroImageSectionProps> = ({ 
+export const HeroImageSection: React.FC<HeroImageSectionProps> = ({
   enterStyle,
-  exitStyle
+  exitStyle,
 }) => {
   return (
-    <View
-      style={[styles.container, enterStyle, exitStyle]}
-    >
+    <View style={[styles.container, enterStyle, exitStyle]}>
       <Image
         source={require('../../assets/DaPainthero.png')}
         style={styles.image}
@@ -31,7 +29,7 @@ const styles = StyleSheet.create({
     width: '100%',
   },
   image: {
-    width: '100%',
     height: height * 0.3,
+    width: '100%',
   },
 });

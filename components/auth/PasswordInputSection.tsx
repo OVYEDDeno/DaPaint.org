@@ -1,5 +1,6 @@
 import React from 'react';
 import { StyleSheet, Text, TextInput, View } from 'react-native';
+
 import {
   DaPaintColors,
   DaPaintSpacing,
@@ -42,6 +43,12 @@ export const PasswordInputSection: React.FC<PasswordInputSectionProps> = ({
 };
 
 const styles = StyleSheet.create({
+  input: {
+    flex: 1,
+    ...DaPaintTypography.bodyLarge,
+    backgroundColor: 'transparent',
+    color: DaPaintColors.textPrimary,
+  },
   inputContainer: {
     gap: DaPaintSpacing.xxs,
   },
@@ -50,19 +57,13 @@ const styles = StyleSheet.create({
     color: DaPaintColors.textPrimary,
   },
   inputWrapper: {
-    flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: DaPaintColors.surfaceStrong,
     borderColor: DaPaintColors.border,
     borderRadius: DaPaintRadius.md,
     borderWidth: 1.5,
+    flexDirection: 'row',
     minHeight: 48,
     paddingHorizontal: DaPaintSpacing.xs,
-  },
-  input: {
-    flex: 1,
-    ...DaPaintTypography.bodyLarge,
-    color: DaPaintColors.textPrimary,
-    backgroundColor: 'transparent',
   },
 });

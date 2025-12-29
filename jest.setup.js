@@ -14,7 +14,7 @@ jest.mock('@sentry/react-native', () => ({
   setContext: jest.fn(),
   setTag: jest.fn(),
   setUser: jest.fn(),
-  withScope: jest.fn((cb) => cb?.({ setTag: jest.fn(), setContext: jest.fn() })),
+  withScope: jest.fn(cb => cb?.({ setTag: jest.fn(), setContext: jest.fn() })),
 }));
 
 // Mock the react-native-gesture-handler
@@ -38,7 +38,7 @@ jest.mock('expo-secure-store', () => ({
 }));
 
 // Mock AsyncStorage
-jest.mock('@react-native-async-storage/async-storage', () => 
+jest.mock('@react-native-async-storage/async-storage', () =>
   require('@react-native-async-storage/async-storage/jest/async-storage-mock')
 );
 

@@ -1,6 +1,12 @@
-import React, { useCallback } from 'react';
-import { TouchableOpacity, Text, StyleSheet, View, Platform } from 'react-native';
 import * as Sentry from '@sentry/react-native';
+import React, { useCallback } from 'react';
+import {
+  TouchableOpacity,
+  Text,
+  StyleSheet,
+  View,
+  Platform,
+} from 'react-native';
 
 interface FeedbackButtonProps {
   visible?: boolean;
@@ -14,7 +20,8 @@ const FeedbackButton: React.FC<FeedbackButtonProps> = ({ visible = true }) => {
 
   const anySentry = Sentry as any;
   const canShowFeedback =
-    typeof anySentry.showFeedbackWidget === 'function' || typeof anySentry.showFeedbackForm === 'function';
+    typeof anySentry.showFeedbackWidget === 'function' ||
+    typeof anySentry.showFeedbackForm === 'function';
 
   const showFeedback = useCallback(() => {
     try {
@@ -45,12 +52,6 @@ const FeedbackButton: React.FC<FeedbackButtonProps> = ({ visible = true }) => {
 };
 
 const styles = StyleSheet.create({
-  container: {
-    position: 'absolute',
-    bottom: 20,
-    right: 20,
-    zIndex: 9999,
-  },
   button: {
     backgroundColor: '#6a1b9a', // Purple color matching the submit button in Sentry config
     paddingHorizontal: 16,
@@ -82,6 +83,12 @@ const styles = StyleSheet.create({
     color: 'white',
     fontSize: 14,
     fontWeight: 'bold',
+  },
+  container: {
+    bottom: 20,
+    position: 'absolute',
+    right: 20,
+    zIndex: 9999,
   },
 });
 

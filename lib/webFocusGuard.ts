@@ -1,7 +1,7 @@
 // lib\webFocusGuard.ts
-import { GestureResponderEvent, Keyboard, Platform } from "react-native";
+import { GestureResponderEvent, Keyboard, Platform } from 'react-native';
 
-const isWeb = Platform.OS === "web";
+const isWeb = Platform.OS === 'web';
 
 export const stopEventOnWeb = (e?: GestureResponderEvent) => {
   if (isWeb && e?.stopPropagation) {

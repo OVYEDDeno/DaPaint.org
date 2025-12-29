@@ -1,7 +1,7 @@
 // app/(auth)/_layout.tsx
-import React from "react";
-import { View, StyleSheet } from "react-native";
-import { Slot } from "expo-router";
+import { Slot } from 'expo-router';
+import React from 'react';
+import { View, StyleSheet } from 'react-native';
 
 export default function AuthLayout() {
   return (
@@ -14,6 +14,6 @@ export default function AuthLayout() {
 }
 
 const styles = StyleSheet.create({
-  root: { flex: 1 },
   content: { flex: 1 },
+  root: { flex: 1 },
 });

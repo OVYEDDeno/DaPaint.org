@@ -1,9 +1,10 @@
 // app/(auth)/index.tsx - Fixed to prevent redirect loop
+import { Redirect } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { View, ActivityIndicator } from 'react-native';
-import { Redirect } from 'expo-router';
-import { supabase } from '../../lib/supabase';
+
 import logger from '../../lib/logger';
+import { supabase } from '../../lib/supabase';
 
 export default function AuthIndex() {
   const [session, setSession] = useState<any>(null);
@@ -13,7 +14,9 @@ export default function AuthIndex() {
     // Check if user is already logged in
     const checkSession = async () => {
       try {
-        const { data: { session } } = await supabase.auth.getSession();
+        const {
+          data: { session },
+        } = await supabase.auth.getSession();
         setSession(session);
       } catch (error) {
         logger.error('Error checking session in auth index:', error);

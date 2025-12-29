@@ -1,5 +1,13 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Pressable, StyleSheet, Text, TextInput, View, Animated } from 'react-native';
+import {
+  Pressable,
+  StyleSheet,
+  Text,
+  TextInput,
+  View,
+  Animated,
+} from 'react-native';
+
 import {
   DaPaintColors,
   DaPaintSpacing,
@@ -32,20 +40,22 @@ export const UsernameInputSection: React.FC<UsernameInputSectionProps> = ({
   const [isFocused, setIsFocused] = useState(false);
   const [hasInteracted, setHasInteracted] = useState(false);
   const pulseAnim = useRef(new Animated.Value(0)).current;
-  
+
   // Determine border color and shadow based on state
   const getBorderColor = () => {
     if (isAvailable === true) return `${DaPaintColors.success}99`;
-    if (formatValidationError || isAvailable === false) return `${DaPaintColors.error}99`;
+    if (formatValidationError || isAvailable === false)
+      return `${DaPaintColors.error}99`;
     return DaPaintColors.border;
   };
 
   const getContainerStyle = () => {
     if (isAvailable === true) return DaPaintShadows.glowSuccess;
-    if (formatValidationError || isAvailable === false) return DaPaintShadows.glowError;
+    if (formatValidationError || isAvailable === false)
+      return DaPaintShadows.glowError;
     return DaPaintShadows.glowPrimary;
   };
-  
+
   // Conversion-focused animation: runs 3 loops then stops
   useEffect(() => {
     if (!username && !isFocused && !hasInteracted) {
@@ -125,7 +135,7 @@ export const UsernameInputSection: React.FC<UsernameInputSectionProps> = ({
                 styles.placeholderText,
                 {
                   transform: [{ scale }],
-                  color: color,
+                  color,
                 },
               ]}
             >
@@ -161,22 +171,41 @@ export const UsernameInputSection: React.FC<UsernameInputSectionProps> = ({
 };
 
 const styles = StyleSheet.create({
-  inputContainer: {
-    gap: DaPaintSpacing.xxs,
-  },
-  usernameInputContainer: {
-    flexDirection: 'row',
+  continueButton: {
     alignItems: 'center',
-    backgroundColor: DaPaintColors.surface,
-    borderRadius: DaPaintRadius.sm,
-    borderWidth: 2,
-    height: 52,
-    paddingHorizontal: DaPaintSpacing.xxs,
+    backgroundColor: DaPaintColors.primaryDeep,
+    borderRadius: DaPaintRadius.xs,
+    height: 40,
+    justifyContent: 'center',
+    paddingHorizontal: DaPaintSpacing.sm,
+    ...DaPaintShadows.medium,
+  },
+  continueButtonDisabled: {
+    opacity: 0.7,
+  },
+  continueButtonPressed: {
+    opacity: 0.9,
+    transform: [{ scale: 0.97 }],
+  },
+  continueButtonText: {
+    ...DaPaintTypography.labelSmall,
+    color: '#ffffff',
+    fontWeight: '700',
+  },
+  inputContainer: {
     gap: DaPaintSpacing.xxs,
   },
   inputWrapper: {
     flex: 1,
     justifyContent: 'center',
+  },
+  placeholderText: {
+    left: DaPaintSpacing.xxs,
+    position: 'absolute',
+    right: DaPaintSpacing.xxs,
+    ...DaPaintTypography.bodyLarge,
+    color: DaPaintColors.textTertiary,
+    pointerEvents: 'none',
   },
   usernameInput: {
     ...DaPaintTypography.bodyLarge,
@@ -184,34 +213,15 @@ const styles = StyleSheet.create({
     paddingHorizontal: DaPaintSpacing.xxs,
     paddingVertical: 0,
   },
-  placeholderText: {
-    position: 'absolute',
-    left: DaPaintSpacing.xxs,
-    right: DaPaintSpacing.xxs,
-    ...DaPaintTypography.bodyLarge,
-    color: DaPaintColors.textTertiary,
-    pointerEvents: 'none',
-  },
-  continueButton: {
-    backgroundColor: DaPaintColors.primaryDeep,
-    borderRadius: DaPaintRadius.xs,
-    height: 40,
-    paddingHorizontal: DaPaintSpacing.sm,
-    justifyContent: 'center',
+  usernameInputContainer: {
     alignItems: 'center',
-    ...DaPaintShadows.medium,
-  },
-  continueButtonPressed: {
-    transform: [{ scale: 0.97 }],
-    opacity: 0.9,
-  },
-  continueButtonDisabled: {
-    opacity: 0.7,
-  },
-  continueButtonText: {
-    ...DaPaintTypography.labelSmall,
-    color: '#ffffff',
-    fontWeight: '700',
+    backgroundColor: DaPaintColors.surface,
+    borderRadius: DaPaintRadius.sm,
+    borderWidth: 2,
+    flexDirection: 'row',
+    gap: DaPaintSpacing.xxs,
+    height: 52,
+    paddingHorizontal: DaPaintSpacing.xxs,
   },
   validationErrorText: {
     ...DaPaintTypography.bodySmall,

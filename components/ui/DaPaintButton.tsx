@@ -1,5 +1,11 @@
 import React from 'react';
-import { TouchableOpacity, Text, StyleSheet, ViewStyle, TextStyle } from 'react-native';
+import {
+  TouchableOpacity,
+  Text,
+  StyleSheet,
+  ViewStyle,
+  TextStyle,
+} from 'react-native';
 
 interface DaPaintButtonProps {
   title: string;
@@ -46,31 +52,31 @@ export const DaPaintButton: React.FC<DaPaintButtonProps> = ({
 
 const styles = StyleSheet.create({
   button: {
+    alignItems: 'center',
     backgroundColor: '#6200ee',
     borderRadius: 8,
-    paddingVertical: 12,
-    paddingHorizontal: 24,
-    alignItems: 'center',
     justifyContent: 'center',
     minWidth: 80,
-  },
-  outlineButton: {
-    backgroundColor: 'transparent',
-    borderWidth: 2,
-    borderColor: '#6200ee',
+    paddingHorizontal: 24,
+    paddingVertical: 12,
   },
   disabledButton: {
     backgroundColor: '#cccccc',
+  },
+  disabledTitle: {
+    color: '#666666',
+  },
+  outlineButton: {
+    backgroundColor: 'transparent',
+    borderColor: '#6200ee',
+    borderWidth: 2,
+  },
+  outlineTitle: {
+    color: '#6200ee',
   },
   title: {
     color: '#ffffff',
     fontSize: 16,
     fontWeight: '600',
-  },
-  outlineTitle: {
-    color: '#6200ee',
-  },
-  disabledTitle: {
-    color: '#666666',
   },
 });

@@ -1,4 +1,5 @@
-﻿import {
+﻿import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
+import {
   View,
   Text,
   StyleSheet,
@@ -8,21 +9,21 @@
   Alert,
   Linking,
   Platform,
-} from "react-native";
-import { useState, useEffect, useCallback, useMemo, useRef } from "react";
-import { supabase } from "../../lib/supabase";
+} from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+
+import { theme } from '../../constants/theme';
 import {
   DaPaint,
   getTeamComposition,
   switchTeam,
   canEditDaPaint,
-} from "../../lib/api/dapaints";
-import EditDaPaintModal from "./EditDaPaintModal";
-import ChatModal from "./ChatModal";
-import logger from "../../lib/logger";
+} from '../../lib/api/dapaints';
+import logger from '../../lib/logger';
+import { supabase } from '../../lib/supabase';
 
-import { theme } from "../../constants/theme";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
+import ChatModal from './ChatModal';
+import EditDaPaintModal from './EditDaPaintModal';
 
 type ActiveDaPaintProps = {
   dapaint: DaPaint;
@@ -59,7 +60,7 @@ export default function ActiveDaPaint({
 
   const [submissions, setSubmissions] = useState<Submission[]>([]);
   const [mySubmission, setMySubmission] = useState<Submission | null>(null);
-  const [proofUrl, setProofUrl] = useState("");
+  const [proofUrl, setProofUrl] = useState('');
 
   const [showEditModal, setShowEditModal] = useState(false);
   const [showChatModal, setShowChatModal] = useState(false);
@@ -90,41 +91,41 @@ export default function ActiveDaPaint({
     const hasFoe = !!dapaint.foe_id;
 
     if (isHost && hasFoe && isWithin48Hours) {
-      return { text: "⚠️ Forfeit", bg: theme.colors.error };
+      return { text: '⚠️ Forfeit', bg: theme.colors.error };
     }
     if (isHost) {
-      return { text: "🗑️ Delete", bg: theme.colors.error };
+      return { text: '🗑️ Delete', bg: theme.colors.error };
     }
     if (isWithin48Hours && hasFoe) {
-      return { text: "⚠️ Forfeit", bg: theme.colors.error };
+      return { text: '⚠️ Forfeit', bg: theme.colors.error };
     }
-    return { text: "← Leave", bg: theme.colors.surfaceStrong };
+    return { text: '← Leave', bg: theme.colors.surfaceStrong };
   }, [dapaint.foe_id, hoursUntilStart, isHost]);
 
   const loadChat = useCallback(async () => {
     const { data } = await supabase
-      .from("dapaint_chat")
+      .from('dapaint_chat')
       .select(`*, user:users(display_name)`)
-      .eq("dapaint_id", dapaint.id)
-      .order("created_at", { ascending: true });
+      .eq('dapaint_id', dapaint.id)
+      .order('created_at', { ascending: true });
 
     if (data) setMessages(data as any);
   }, [dapaint.id]);
 
   const loadSubmissions = useCallback(async () => {
-    if (dapaint.dapaint_type === "1v1") {
+    if (dapaint.dapaint_type === '1v1') {
       const subs: Submission[] = [];
 
       const { data: hostData } = await supabase
-        .from("users")
-        .select("display_name")
-        .eq("id", dapaint.host_id)
+        .from('users')
+        .select('display_name')
+        .eq('id', dapaint.host_id)
         .single();
 
       if (dapaint.host_claimed_winner_id || dapaint.foe_claimed_winner_id) {
         subs.push({
           user_id: dapaint.host_id,
-          display_name: hostData?.display_name || "Host",
+          display_name: hostData?.display_name || 'Host',
           claimed_won: dapaint.host_claimed_winner_id === dapaint.host_id,
           proof_url: null,
           submitted_at: new Date().toISOString(),
@@ -133,15 +134,15 @@ export default function ActiveDaPaint({
 
       if (dapaint.foe_id) {
         const { data: foeData } = await supabase
-          .from("users")
-          .select("display_name")
-          .eq("id", dapaint.foe_id)
+          .from('users')
+          .select('display_name')
+          .eq('id', dapaint.foe_id)
           .single();
 
         if (dapaint.host_claimed_winner_id || dapaint.foe_claimed_winner_id) {
           subs.push({
             user_id: dapaint.foe_id,
-            display_name: foeData?.display_name || "Foe",
+            display_name: foeData?.display_name || 'Foe',
             claimed_won: dapaint.foe_claimed_winner_id === dapaint.foe_id,
             proof_url: null,
             submitted_at: new Date().toISOString(),
@@ -150,12 +151,12 @@ export default function ActiveDaPaint({
       }
 
       setSubmissions(subs);
-      setMySubmission(subs.find((s) => s.user_id === userId) || null);
+      setMySubmission(subs.find(s => s.user_id === userId) || null);
       return;
     }
 
     const { data: participants } = await supabase
-      .from("dapaint_participants")
+      .from('dapaint_participants')
       .select(
         `
         user_id,
@@ -166,8 +167,8 @@ export default function ActiveDaPaint({
         user:users(display_name)
       `
       )
-      .eq("dapaint_id", dapaint.id)
-      .eq("result_submitted", true);
+      .eq('dapaint_id', dapaint.id)
+      .eq('result_submitted', true);
 
     if (!participants) {
       setSubmissions([]);
@@ -176,7 +177,7 @@ export default function ActiveDaPaint({
     }
 
     const subs: Submission[] = participants.map((p: any) => {
-      const dn = p.user?.display_name || "User";
+      const dn = p.user?.display_name || 'User';
       return {
         user_id: p.user_id,
         display_name: dn,
@@ -187,11 +188,11 @@ export default function ActiveDaPaint({
     });
 
     setSubmissions(subs);
-    setMySubmission(subs.find((s) => s.user_id === userId) || null);
+    setMySubmission(subs.find(s => s.user_id === userId) || null);
   }, [dapaint, userId]);
 
   const loadTeam = useCallback(async () => {
-    if (dapaint.dapaint_type !== "team") return;
+    if (dapaint.dapaint_type !== 'team') return;
     const composition = await getTeamComposition(dapaint.id);
     setTeamInfo(composition);
   }, [dapaint.dapaint_type, dapaint.id]);
@@ -210,33 +211,30 @@ export default function ActiveDaPaint({
     chatInsertChannel.current = supabase
       .channel(`dapaint-chat-insert-${dapaint.id}`)
       .on(
-        "postgres_changes",
+        'postgres_changes',
         {
-          event: "INSERT",
-          schema: "public",
-          table: "dapaint_chat",
+          event: 'INSERT',
+          schema: 'public',
+          table: 'dapaint_chat',
           filter: `dapaint_id=eq.${dapaint.id}`,
         },
-        async (payload) => {
+        async payload => {
           const newMessage = (payload as any).new;
-          
+
           // Fetch user data for the new message
           const { data: user } = await supabase
-            .from("users")
-            .select("display_name")
-            .eq("id", newMessage.user_id)
+            .from('users')
+            .select('display_name')
+            .eq('id', newMessage.user_id)
             .single();
 
           // Create the complete message object with user data
           const messageWithUser: ChatMessage = {
             ...newMessage,
-            user: user ? { display_name: user.display_name } : undefined
+            user: user ? { display_name: user.display_name } : undefined,
           };
 
-          setMessages((prev) => [
-            ...prev,
-            messageWithUser
-          ]);
+          setMessages(prev => [...prev, messageWithUser]);
         }
       )
       .subscribe();
@@ -244,16 +242,16 @@ export default function ActiveDaPaint({
     chatUpdateChannel.current = supabase
       .channel(`dapaint-chat-update-${dapaint.id}`)
       .on(
-        "postgres_changes",
+        'postgres_changes',
         {
-          event: "UPDATE",
-          schema: "public",
-          table: "dapaint_chat",
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'dapaint_chat',
           filter: `dapaint_id=eq.${dapaint.id}`,
         },
-        (payload) => {
-          setMessages((prev) =>
-            prev.map((m) =>
+        payload => {
+          setMessages(prev =>
+            prev.map(m =>
               m.id === (payload as any).new.id
                 ? { ...m, ...(payload as any).new }
                 : m
@@ -263,15 +261,15 @@ export default function ActiveDaPaint({
       )
       .subscribe();
 
-    if (dapaint.dapaint_type === "1v1") {
+    if (dapaint.dapaint_type === '1v1') {
       subsChannel.current = supabase
         .channel(`dapaint-subs-1v1-${dapaint.id}`)
         .on(
-          "postgres_changes",
+          'postgres_changes',
           {
-            event: "UPDATE",
-            schema: "public",
-            table: "dapaints",
+            event: 'UPDATE',
+            schema: 'public',
+            table: 'dapaints',
             filter: `id=eq.${dapaint.id}`,
           },
           () => loadSubmissions()
@@ -281,21 +279,21 @@ export default function ActiveDaPaint({
       subsChannel.current = supabase
         .channel(`dapaint-subs-team-${dapaint.id}`)
         .on(
-          "postgres_changes",
+          'postgres_changes',
           {
-            event: "INSERT",
-            schema: "public",
-            table: "dapaint_participants",
+            event: 'INSERT',
+            schema: 'public',
+            table: 'dapaint_participants',
             filter: `dapaint_id=eq.${dapaint.id}`,
           },
           () => loadSubmissions()
         )
         .on(
-          "postgres_changes",
+          'postgres_changes',
           {
-            event: "UPDATE",
-            schema: "public",
-            table: "dapaint_participants",
+            event: 'UPDATE',
+            schema: 'public',
+            table: 'dapaint_participants',
             filter: `dapaint_id=eq.${dapaint.id}`,
           },
           () => loadSubmissions()
@@ -323,7 +321,7 @@ export default function ActiveDaPaint({
       await switchTeam(dapaint.id);
       await loadData();
     } catch (error: any) {
-      Alert.alert("Error", error.message || "Failed to switch teams");
+      Alert.alert('Error', error.message || 'Failed to switch teams');
     } finally {
       setLoading(false);
     }
@@ -334,22 +332,22 @@ export default function ActiveDaPaint({
       const url = proofUrl.trim();
       if (!url) {
         Alert.alert(
-          "Proof Required",
-          "Please provide a proof link (Instagram, TikTok, YouTube, etc.) in the input field above before submitting your result."
+          'Proof Required',
+          'Please provide a proof link (Instagram, TikTok, YouTube, etc.) in the input field above before submitting your result.'
         );
         return;
       }
-      if (!url.startsWith("http://") && !url.startsWith("https://")) {
+      if (!url.startsWith('http://') && !url.startsWith('https://')) {
         Alert.alert(
-          "Invalid URL",
-          "Please enter a valid URL starting with http:// or https://"
+          'Invalid URL',
+          'Please enter a valid URL starting with http:// or https://'
         );
         return;
       }
 
       setLoading(true);
       try {
-        const { error } = await supabase.rpc("process_result_submission", {
+        const { error } = await supabase.rpc('process_result_submission', {
           p_dapaint_id: dapaint.id,
           p_user_id: userId,
           p_claimed_won: claimedWon,
@@ -359,15 +357,18 @@ export default function ActiveDaPaint({
         if (error) throw error;
 
         Alert.alert(
-          "Result Submitted",
-          claimedWon ? "You claimed the win!" : "You submitted your result.",
-          [{ text: "OK", onPress: () => loadSubmissions() }]
+          'Result Submitted',
+          claimedWon ? 'You claimed the win!' : 'You submitted your result.',
+          [{ text: 'OK', onPress: () => loadSubmissions() }]
         );
 
-        setProofUrl("");
+        setProofUrl('');
       } catch (error: any) {
-        logger.error("Error submitting result:", error);
-        Alert.alert("Submission Failed", error.message || "Failed to submit result. Please try again.");
+        logger.error('Error submitting result:', error);
+        Alert.alert(
+          'Submission Failed',
+          error.message || 'Failed to submit result. Please try again.'
+        );
       } finally {
         setLoading(false);
       }
@@ -379,17 +380,17 @@ export default function ActiveDaPaint({
     const isWithin48Hours = hoursUntilStart <= 48;
     const hasFoe = !!dapaint.foe_id;
 
-    if (Platform.OS === "web") {
-      let message = "Leave DaPaint?\n\nAre you sure you want to leave?";
+    if (Platform.OS === 'web') {
+      let message = 'Leave DaPaint?\n\nAre you sure you want to leave?';
       if (isHost && hasFoe && isWithin48Hours) {
         message =
-          "⚠️ FORFEIT WARNING\n\nYou are the host and within 48 hours of start time. Leaving now means you forfeit and your foe wins. Continue?";
+          '⚠️ FORFEIT WARNING\n\nYou are the host and within 48 hours of start time. Leaving now means you forfeit and your foe wins. Continue?';
       } else if (isHost) {
         message =
-          "Delete DaPaint?\n\nThis will permanently delete the DaPaint.";
+          'Delete DaPaint?\n\nThis will permanently delete the DaPaint.';
       } else if (isWithin48Hours && hasFoe) {
         message =
-          "⚠️ FORFEIT WARNING\n\nYou are within 48 hours of start time. Leaving now means you forfeit and the host wins. Continue?";
+          '⚠️ FORFEIT WARNING\n\nYou are within 48 hours of start time. Leaving now means you forfeit and the host wins. Continue?';
       }
 
       const ok = window.confirm(message);
@@ -397,43 +398,43 @@ export default function ActiveDaPaint({
       return;
     }
 
-    let title = "Leave DaPaint?";
-    let message = "Are you sure you want to leave?";
-    let destructiveText = "Leave";
+    let title = 'Leave DaPaint?';
+    let message = 'Are you sure you want to leave?';
+    let destructiveText = 'Leave';
 
     if (isHost && hasFoe && isWithin48Hours) {
-      title = "⚠️ Forfeit Warning";
+      title = '⚠️ Forfeit Warning';
       message =
-        "You are the host and within 48 hours of start time. Leaving now means you forfeit and your foe wins.";
-      destructiveText = "Forfeit";
+        'You are the host and within 48 hours of start time. Leaving now means you forfeit and your foe wins.';
+      destructiveText = 'Forfeit';
     } else if (isHost) {
-      title = "Delete DaPaint?";
-      message = "This will permanently delete the DaPaint.";
-      destructiveText = "Delete";
+      title = 'Delete DaPaint?';
+      message = 'This will permanently delete the DaPaint.';
+      destructiveText = 'Delete';
     } else if (isWithin48Hours && hasFoe) {
-      title = "⚠️ Forfeit Warning";
+      title = '⚠️ Forfeit Warning';
       message =
-        "You are within 48 hours of start time. Leaving now means you forfeit and the host wins.";
-      destructiveText = "Forfeit";
+        'You are within 48 hours of start time. Leaving now means you forfeit and the host wins.';
+      destructiveText = 'Forfeit';
     }
 
     Alert.alert(title, message, [
-      { text: "Cancel", style: "cancel" },
-      { text: destructiveText, style: "destructive", onPress: onLeave },
+      { text: 'Cancel', style: 'cancel' },
+      { text: destructiveText, style: 'destructive', onPress: onLeave },
     ]);
   }, [dapaint.foe_id, hoursUntilStart, isHost, onLeave]);
 
   const handleEdit = useCallback(() => {
     if (!isHost) {
-      Alert.alert("Permission", "Only the host can edit this DaPaint.");
+      Alert.alert('Permission', 'Only the host can edit this DaPaint.');
       return;
     }
 
     canEditDaPaint(dapaint.id).then((ok: boolean) => {
       if (!ok) {
         Alert.alert(
-          "Cannot Edit",
-          "Someone has already joined. Editing is locked."
+          'Cannot Edit',
+          'Someone has already joined. Editing is locked.'
         );
         return;
       }
@@ -445,7 +446,7 @@ export default function ActiveDaPaint({
     try {
       await Linking.openURL(url);
     } catch {
-      Alert.alert("Error", "Could not open link.");
+      Alert.alert('Error', 'Could not open link.');
     }
   }, []);
 
@@ -459,8 +460,6 @@ export default function ActiveDaPaint({
         ]}
         keyboardShouldPersistTaps="handled"
       >
-        
-
         {/* Matchup */}
         <View style={styles.card}>
           <View style={styles.matchRow}>
@@ -473,19 +472,19 @@ export default function ActiveDaPaint({
 
             <View style={styles.side}>
               <Text style={styles.sideLabel}>
-                {dapaint.dapaint_type === "1v1" ? "FOE" : "FOE TEAM"}
+                {dapaint.dapaint_type === '1v1' ? 'FOE' : 'FOE TEAM'}
               </Text>
               <Text style={styles.sideName}>
-                {dapaint.dapaint_type === "1v1"
-                  ? dapaint.foe_display_name || "Waiting..."
-                  : "Multiple"}
+                {dapaint.dapaint_type === '1v1'
+                  ? dapaint.foe_display_name || 'Waiting...'
+                  : 'Multiple'}
               </Text>
             </View>
           </View>
         </View>
 
         {/* Team roster */}
-        {dapaint.dapaint_type === "team" && teamInfo && (
+        {dapaint.dapaint_type === 'team' && teamInfo && (
           <View style={styles.card}>
             <Text style={styles.sectionTitle}>Teams</Text>
 
@@ -495,7 +494,7 @@ export default function ActiveDaPaint({
               </Text>
               {teamInfo.hostTeam.map((m: any) => (
                 <Text key={m.id} style={styles.teamMember}>
-                  • {m.user?.display_name || "Member"}
+                  • {m.user?.display_name || 'Member'}
                 </Text>
               ))}
             </View>
@@ -506,7 +505,7 @@ export default function ActiveDaPaint({
               </Text>
               {teamInfo.foeTeam.map((m: any) => (
                 <Text key={m.id} style={styles.teamMember}>
-                  • {m.user?.display_name || "Member"}
+                  • {m.user?.display_name || 'Member'}
                 </Text>
               ))}
             </View>
@@ -518,8 +517,9 @@ export default function ActiveDaPaint({
         )}
 
         {/* Details */}
-        <View style={styles.card}>{/* Title */}
-        <Text style={styles.title}>{dapaint.dapaint}</Text>
+        <View style={styles.card}>
+          {/* Title */}
+          <Text style={styles.title}>{dapaint.dapaint}</Text>
 
           <View style={styles.detailRow}>
             <Text style={styles.detailLabel}>📍 Location</Text>
@@ -540,13 +540,13 @@ export default function ActiveDaPaint({
                 ? (() => {
                     // Calculate time remaining for submissions (24 hours after start)
                     const startTime = new Date(dapaint.starts_at).getTime();
-                    const submissionDeadline = startTime + (24 * 60 * 60 * 1000); // 24 hours in milliseconds
+                    const submissionDeadline = startTime + 24 * 60 * 60 * 1000; // 24 hours in milliseconds
                     const timeLeftMs = submissionDeadline - now.getTime();
-                    
+
                     if (timeLeftMs <= 0) {
-                      return "Submission deadline passed";
+                      return 'Submission deadline passed';
                     }
-                    
+
                     const totalHours = timeLeftMs / (1000 * 60 * 60);
                     const days = Math.floor(totalHours / 24);
                     const hours = Math.floor(totalHours % 24);
@@ -583,14 +583,14 @@ export default function ActiveDaPaint({
               style={[
                 styles.detailRow,
                 {
-                  backgroundColor: "rgba(255, 100, 100, 0.1)",
+                  backgroundColor: 'rgba(255, 100, 100, 0.1)',
                   padding: theme.space.sm,
                   borderRadius: theme.radius.md,
                 },
               ]}
             >
               <Text style={[styles.detailValue, { color: theme.colors.error }]}>
-                ⚠️ Heads up: you have {Math.max(0, Math.floor(hoursUntilStart))}{" "}
+                ⚠️ Heads up: you have {Math.max(0, Math.floor(hoursUntilStart))}{' '}
                 hours to find a foe before this DaPaint is deleted
                 automatically.
               </Text>
@@ -620,7 +620,7 @@ export default function ActiveDaPaint({
             {mySubmission ? (
               <View style={styles.submittedBox}>
                 <Text style={styles.submittedText}>
-                  You submitted: {mySubmission.claimed_won ? "I WON" : "I LOST"}
+                  You submitted: {mySubmission.claimed_won ? 'I WON' : 'I LOST'}
                 </Text>
                 {mySubmission.proof_url ? (
                   <Pressable onPress={() => openUrl(mySubmission.proof_url!)}>
@@ -674,11 +674,11 @@ export default function ActiveDaPaint({
             {submissions.length > 0 && (
               <View style={{ marginTop: theme.space.md }}>
                 <Text style={styles.subTitle}>Other submissions</Text>
-                {submissions.map((sub) => (
+                {submissions.map(sub => (
                   <View key={sub.user_id} style={styles.otherSub}>
                     <Text style={styles.otherName}>{sub.display_name}</Text>
                     <Text style={styles.otherClaim}>
-                      {sub.claimed_won ? "Claimed win" : "Claimed loss"}
+                      {sub.claimed_won ? 'Claimed win' : 'Claimed loss'}
                     </Text>
                     {sub.proof_url ? (
                       <Pressable onPress={() => openUrl(sub.proof_url!)}>
@@ -701,15 +701,15 @@ export default function ActiveDaPaint({
           styles.bottomBar,
           {
             paddingBottom:
-              (Platform.OS === "ios" ? theme.space.xxl : theme.space.md) +
+              (Platform.OS === 'ios' ? theme.space.xxl : theme.space.md) +
               insets.bottom,
-            bottom: Platform.OS === "web" ? 80 : 20 + insets.bottom,
-            backgroundColor: "transparent",
+            bottom: Platform.OS === 'web' ? 80 : 20 + insets.bottom,
+            backgroundColor: 'transparent',
           },
         ]}
       >
         <View style={styles.bottomInner}>
-          {dapaint.dapaint_type === "team" && !hasStarted && !isHost && (
+          {dapaint.dapaint_type === 'team' && !hasStarted && !isHost && (
             <Pressable
               style={[styles.pillBtn, styles.pillBtnAlt]}
               onPress={handleSwitchTeam}
@@ -755,16 +755,16 @@ export default function ActiveDaPaint({
         messages={messages}
         userId={userId}
         onClose={() => setShowChatModal(false)}
-        onSendMessage={async (message) => {
+        onSendMessage={async message => {
           try {
-            const { error } = await supabase.from("dapaint_chat").insert({
+            const { error } = await supabase.from('dapaint_chat').insert({
               dapaint_id: dapaint.id,
               user_id: userId,
               message: message.trim(),
             });
             if (error) throw error;
           } catch {
-            Alert.alert("Error", "Failed to send message");
+            Alert.alert('Error', 'Failed to send message');
           }
         }}
       />
@@ -773,38 +773,125 @@ export default function ActiveDaPaint({
 }
 
 const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: "transparent" },
+  bottomBar: {
+    borderTopColor: 'transparent',
+    borderTopWidth: 0,
+    bottom: 20,
+    left: theme.space.md,
+    overflow: 'hidden',
+    paddingHorizontal: theme.space.xs,
+    paddingTop: theme.space.xs,
+    position: 'absolute',
+    right: theme.space.md,
+    zIndex: 10,
+  },
+  bottomInner: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: theme.space.sm,
+    justifyContent: 'center',
+  },
+  btnDisabled: {
+    opacity: 0.6,
+  },
+  card: {
+    backgroundColor: theme.colors.surface,
+    borderColor: theme.colors.border,
+    borderRadius: theme.radius.xl,
+    borderWidth: 1,
+    marginBottom: theme.space.md,
+    padding: theme.space.lg,
+    ...theme.shadow.small,
+  },
+
+  detailLabel: {
+    ...theme.type.labelSmall,
+    color: theme.colors.textTertiary,
+    marginBottom: theme.space.xxxs,
+  },
+
+  detailRow: { marginBottom: theme.space.sm },
+
+  detailValue: { ...theme.type.bodyLarge, color: theme.colors.textPrimary },
+  helperText: {
+    ...theme.type.bodySmall,
+    color: theme.colors.textSecondary,
+    fontStyle: 'italic',
+    marginBottom: theme.space.sm,
+  },
+  input: {
+    backgroundColor: theme.colors.surfaceStrong,
+    borderColor: theme.colors.border,
+    borderRadius: theme.radius.md,
+    borderWidth: 1,
+    color: theme.colors.textPrimary,
+    paddingHorizontal: theme.space.md,
+    paddingVertical: theme.space.sm,
+    ...theme.type.bodyLarge,
+    marginBottom: theme.space.xs,
+  },
+  linkText: {
+    ...theme.type.labelSmall,
+    color: theme.colors.like,
+    marginTop: theme.space.xs,
+    textDecorationLine: 'underline',
+  },
+  matchRow: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+  },
+
+  otherClaim: {
+    ...theme.type.bodyMedium,
+    color: theme.colors.textSecondary,
+    marginTop: theme.space.xxxs,
+  },
+  otherName: { ...theme.type.labelMedium, color: theme.colors.textPrimary },
+  otherSub: {
+    backgroundColor: theme.colors.surfaceStrong,
+    borderColor: theme.colors.border,
+    borderRadius: theme.radius.lg,
+    borderWidth: 1,
+    marginBottom: theme.space.xs,
+    padding: theme.space.sm,
+  },
+  pillBtn: {
+    backgroundColor: theme.colors.primaryDeep,
+    borderColor: 'rgba(255,255,255,0.12)',
+    borderRadius: theme.radius.full,
+    borderWidth: 1,
+    paddingHorizontal: theme.space.md,
+    paddingVertical: theme.space.xs,
+  },
+
+  pillBtnAlt: {
+    backgroundColor: theme.colors.surface,
+    borderColor: theme.colors.border,
+  },
+  pillText: { ...theme.type.labelMedium, color: '#ffffff' },
+  pillTextAlt: { ...theme.type.labelMedium, color: theme.colors.textPrimary },
+
+  resultBtn: {
+    alignItems: 'center',
+    borderRadius: theme.radius.md,
+    flex: 1,
+    paddingVertical: theme.space.sm,
+  },
+  resultBtnText: { ...theme.type.labelMedium, color: '#ffffff' },
+
+  resultRow: { flexDirection: 'row', gap: theme.space.sm },
+  screen: { backgroundColor: 'transparent', flex: 1 },
   scroll: { flex: 1 },
   scrollContent: {
     paddingHorizontal: theme.space.lg,
   },
-  title: {
-    ...theme.type.displayLarge,
-    color: theme.colors.textPrimary,
-  },
-
-  card: {
-    backgroundColor: theme.colors.surface,
-    borderRadius: theme.radius.xl,
-    padding: theme.space.lg,
-    borderWidth: 1,
-    borderColor: theme.colors.border,
-    marginBottom: theme.space.md,
-    ...theme.shadow.small,
-  },
-
   sectionTitle: {
     ...theme.type.displaySmall,
     color: theme.colors.textPrimary,
     marginBottom: theme.space.sm,
   },
-
-  matchRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-  },
-  side: { flex: 1, alignItems: "center" },
+  side: { alignItems: 'center', flex: 1 },
   sideLabel: {
     ...theme.type.labelSmall,
     color: theme.colors.textTertiary,
@@ -813,85 +900,7 @@ const styles = StyleSheet.create({
   sideName: {
     ...theme.type.labelLarge,
     color: theme.colors.textPrimary,
-    textAlign: "center",
-  },
-  vs: {
-    ...theme.type.labelLarge,
-    color: theme.colors.textTertiary,
-    marginHorizontal: theme.space.sm,
-  },
-
-  teamBlock: { marginBottom: theme.space.md },
-  teamTitle: {
-    ...theme.type.labelLarge,
-    color: theme.colors.textPrimary,
-    marginBottom: theme.space.xs,
-  },
-  teamMember: {
-    ...theme.type.bodyMedium,
-    color: theme.colors.textSecondary,
-    marginBottom: theme.space.xxxs,
-  },
-  warnText: {
-    ...theme.type.labelMedium,
-    color: theme.colors.warning,
-    textAlign: "center",
-  },
-
-  detailRow: { marginBottom: theme.space.sm },
-  detailLabel: {
-    ...theme.type.labelSmall,
-    color: theme.colors.textTertiary,
-    marginBottom: theme.space.xxxs,
-  },
-  detailValue: { ...theme.type.bodyLarge, color: theme.colors.textPrimary },
-
-  submittedBox: {
-    backgroundColor: "rgba(46,196,255,0.12)",
-    borderRadius: theme.radius.lg,
-    padding: theme.space.md,
-    borderWidth: 1,
-    borderColor: "rgba(46,196,255,0.22)",
-  },
-  submittedText: {
-    ...theme.type.labelMedium,
-    color: theme.colors.textPrimary,
-    marginBottom: theme.space.xs,
-  },
-
-  submitBox: {},
-  submitLabel: {
-    ...theme.type.labelLarge,
-    color: theme.colors.textPrimary,
-    marginBottom: theme.space.xs,
-  },
-  input: {
-    backgroundColor: theme.colors.surfaceStrong,
-    borderRadius: theme.radius.md,
-    paddingHorizontal: theme.space.md,
-    paddingVertical: theme.space.sm,
-    borderWidth: 1,
-    borderColor: theme.colors.border,
-    color: theme.colors.textPrimary,
-    ...theme.type.bodyLarge,
-    marginBottom: theme.space.xs,
-  },
-  helperText: {
-    ...theme.type.bodySmall,
-    color: theme.colors.textSecondary,
-    marginBottom: theme.space.sm,
-    fontStyle: "italic",
-  },
-  resultRow: { flexDirection: "row", gap: theme.space.sm },
-  resultBtn: {
-    flex: 1,
-    borderRadius: theme.radius.md,
-    paddingVertical: theme.space.sm,
-    alignItems: "center",
-  },
-  resultBtnText: { ...theme.type.labelMedium, color: "#ffffff" },
-  btnDisabled: {
-    opacity: 0.6,
+    textAlign: 'center',
   },
 
   subTitle: {
@@ -899,62 +908,48 @@ const styles = StyleSheet.create({
     color: theme.colors.textSecondary,
     marginBottom: theme.space.sm,
   },
-  otherSub: {
-    backgroundColor: theme.colors.surfaceStrong,
-    borderRadius: theme.radius.lg,
-    padding: theme.space.sm,
-    borderWidth: 1,
-    borderColor: theme.colors.border,
+  submitBox: {},
+  submitLabel: {
+    ...theme.type.labelLarge,
+    color: theme.colors.textPrimary,
     marginBottom: theme.space.xs,
   },
-  otherName: { ...theme.type.labelMedium, color: theme.colors.textPrimary },
-  otherClaim: {
+  submittedBox: {
+    backgroundColor: 'rgba(46,196,255,0.12)',
+    borderColor: 'rgba(46,196,255,0.22)',
+    borderRadius: theme.radius.lg,
+    borderWidth: 1,
+    padding: theme.space.md,
+  },
+  submittedText: {
+    ...theme.type.labelMedium,
+    color: theme.colors.textPrimary,
+    marginBottom: theme.space.xs,
+  },
+
+  teamBlock: { marginBottom: theme.space.md },
+  teamMember: {
     ...theme.type.bodyMedium,
     color: theme.colors.textSecondary,
-    marginTop: theme.space.xxxs,
+    marginBottom: theme.space.xxxs,
   },
-  linkText: {
-    ...theme.type.labelSmall,
-    color: theme.colors.like,
-    marginTop: theme.space.xs,
-    textDecorationLine: "underline",
+  teamTitle: {
+    ...theme.type.labelLarge,
+    color: theme.colors.textPrimary,
+    marginBottom: theme.space.xs,
   },
-
-  bottomBar: {
-    position: "absolute",
-    left: theme.space.md,
-    right: theme.space.md,
-    bottom: 20,
-    paddingTop: theme.space.xs,
-    paddingHorizontal: theme.space.xs,
-    borderTopWidth: 0,
-    borderTopColor: "transparent",
-    overflow: "hidden",
-    zIndex: 10,
+  title: {
+    ...theme.type.displayLarge,
+    color: theme.colors.textPrimary,
   },
-  bottomInner: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: theme.space.sm,
-    justifyContent: "center",
+  vs: {
+    ...theme.type.labelLarge,
+    color: theme.colors.textTertiary,
+    marginHorizontal: theme.space.sm,
   },
-  pillBtn: {
-    borderRadius: theme.radius.full,
-    paddingVertical: theme.space.xs,
-    paddingHorizontal: theme.space.md,
-    backgroundColor: theme.colors.primaryDeep,
-    borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.12)",
+  warnText: {
+    ...theme.type.labelMedium,
+    color: theme.colors.warning,
+    textAlign: 'center',
   },
-  pillBtnAlt: {
-    backgroundColor: theme.colors.surface,
-    borderColor: theme.colors.border,
-  },
-  pillText: { ...theme.type.labelMedium, color: "#ffffff" },
-  pillTextAlt: { ...theme.type.labelMedium, color: theme.colors.textPrimary },
 });
-
-
-
-
-

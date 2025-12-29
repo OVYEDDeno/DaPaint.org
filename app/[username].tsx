@@ -1,12 +1,29 @@
-﻿import React, { useState, useEffect, useCallback } from 'react';
-import { View, Text, StyleSheet, Image, ScrollView, Pressable, Alert, Modal } from 'react-native';
+﻿import { useRouter, useLocalSearchParams, useFocusEffect } from 'expo-router';
+import React, { useState, useEffect, useCallback } from 'react';
+import {
+  View,
+  Text,
+  StyleSheet,
+  Image,
+  ScrollView,
+  Pressable,
+  Alert,
+  Modal,
+} from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { supabase } from '../lib/supabase';
-import { getProfilePicUrl } from '../lib/profilePics';
-import { useRouter, useLocalSearchParams, useFocusEffect } from 'expo-router';
-import BackgroundLayer from '../components/ui/BackgroundLayer';
+
 import AuthSection from '../components/auth/AuthSection';
-import { DaPaintButtons, DaPaintColors, DaPaintRadius, DaPaintShadows, DaPaintSpacing, DaPaintTypography } from '../constants/DaPaintDesign';
+import BackgroundLayer from '../components/ui/BackgroundLayer';
+import {
+  DaPaintButtons,
+  DaPaintColors,
+  DaPaintRadius,
+  DaPaintShadows,
+  DaPaintSpacing,
+  DaPaintTypography,
+} from '../constants/DaPaintDesign';
+import { getProfilePicUrl } from '../lib/profilePics';
+import { supabase } from '../lib/supabase';
 
 const PUBLIC_PROFILE_CACHE_TTL_MS = 5 * 60 * 1000;
 const publicProfileCache = new Map<string, { data: any; updatedAt: number }>();
@@ -28,7 +45,7 @@ export default function PublicProfileScreen() {
   const router = useRouter();
   const params = useLocalSearchParams();
   const { username } = {
-    username: params.username as string || '',
+    username: (params.username as string) || '',
   };
   const [userData, setUserData] = useState<any>(null);
   const [hasAttemptedLoad, setHasAttemptedLoad] = useState(false);
@@ -43,7 +60,8 @@ export default function PublicProfileScreen() {
   useEffect(() => {
     const fetchUserData = async () => {
       try {
-        const normalizedUsername = typeof username === 'string' ? username.toLowerCase() : '';
+        const normalizedUsername =
+          typeof username === 'string' ? username.toLowerCase() : '';
         if (!normalizedUsername) {
           Alert.alert('Error', 'Username not provided');
           setHasAttemptedLoad(true);
@@ -57,7 +75,8 @@ export default function PublicProfileScreen() {
 
         const { data, error } = await supabase
           .from('users')
-          .select(`
+          .select(
+            `
             id,
             username,
             display_name,
@@ -73,7 +92,8 @@ export default function PublicProfileScreen() {
             created_at,
             last_active_at,
             image_path
-          `)
+          `
+          )
           .eq('username', normalizedUsername)
           .single();
 
@@ -101,7 +121,9 @@ export default function PublicProfileScreen() {
 
   useEffect(() => {
     const loadViewer = async () => {
-      const { data: { user } } = await supabase.auth.getUser();
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
       setViewerId(user?.id || null);
       setViewerChecked(true);
     };
@@ -142,7 +164,10 @@ export default function PublicProfileScreen() {
     setSubscriberCount(count || 0);
   };
 
-  const loadSubscriptionStatus = async (targetUserId: string, currentUserId: string) => {
+  const loadSubscriptionStatus = async (
+    targetUserId: string,
+    currentUserId: string
+  ) => {
     const { data, error } = await supabase
       .from('user_subscriptions')
       .select('subscriber_id')
@@ -212,9 +237,15 @@ export default function PublicProfileScreen() {
     { label: 'Highest Win Streak', value: userData?.highest_winstreak || '0' },
     { label: 'Wins', value: userData?.wins || '0' },
     { label: 'Losses', value: userData?.losses || '0' },
-    { label: 'Win Rate', value: userData?.wins !== undefined && userData?.losses !== undefined && (userData.wins + userData.losses) > 0 
-      ? `${Math.round((userData.wins / (userData.wins + userData.losses)) * 100)}%` 
-      : '0%' },
+    {
+      label: 'Win Rate',
+      value:
+        userData?.wins !== undefined &&
+        userData?.losses !== undefined &&
+        userData.wins + userData.losses > 0
+          ? `${Math.round((userData.wins / (userData.wins + userData.losses)) * 100)}%`
+          : '0%',
+    },
     { label: 'Disqualifications', value: userData?.disqualifications || '0' },
   ];
 
@@ -228,9 +259,9 @@ export default function PublicProfileScreen() {
       </SafeAreaView>
     );
   }
-  
+
   const FALLBACK_AVATAR = require('../assets/logo.png');
-  
+
   // Get avatar URI using the helper function
   const avatarUri = getProfilePicUrl(userData?.image_path);
 
@@ -238,8 +269,8 @@ export default function PublicProfileScreen() {
     <SafeAreaView style={styles.container}>
       <BackgroundLayer />
       <View style={styles.contentWrapper}>
-        <ScrollView 
-          style={styles.scrollView} 
+        <ScrollView
+          style={styles.scrollView}
           contentContainerStyle={styles.contentContainer}
           showsVerticalScrollIndicator={false}
           bounces={false}
@@ -248,13 +279,17 @@ export default function PublicProfileScreen() {
           <View style={styles.headerContainer}>
             <View style={styles.avatarContainer}>
               <Image
-                source={!avatarUri || avatarError ? FALLBACK_AVATAR : { uri: avatarUri }}
+                source={
+                  !avatarUri || avatarError
+                    ? FALLBACK_AVATAR
+                    : { uri: avatarUri }
+                }
                 style={styles.avatar}
                 resizeMode="cover"
                 onError={() => setAvatarError(true)}
               />
             </View>
-            
+
             <View style={styles.userInfoContainer}>
               <Text style={styles.displayName}>
                 {userData?.display_name || 'User'}
@@ -264,7 +299,9 @@ export default function PublicProfileScreen() {
               </Text>
               {(userData?.city || userData?.zipcode) && (
                 <Text style={styles.location}>
-                  {[userData?.city, userData?.zipcode].filter(Boolean).join(' - ')}
+                  {[userData?.city, userData?.zipcode]
+                    .filter(Boolean)
+                    .join(' - ')}
                 </Text>
               )}
               <Text style={styles.subscriberCount}>
@@ -276,18 +313,22 @@ export default function PublicProfileScreen() {
           {/* Action Buttons */}
           {userData?.id && userData.id !== viewerId && (
             <View style={styles.actionContainer}>
-              <Pressable 
-                style={[styles.actionButton, styles.subscribeButton]} 
-                onPress={handleToggleSubscribe} 
+              <Pressable
+                style={[styles.actionButton, styles.subscribeButton]}
+                onPress={handleToggleSubscribe}
                 disabled={submitting}
               >
                 <Text style={styles.actionButtonText}>
-                  {submitting ? 'Please wait...' : isSubscribed ? 'Unsubscribe' : 'Subscribe'}
+                  {submitting
+                    ? 'Please wait...'
+                    : isSubscribed
+                      ? 'Unsubscribe'
+                      : 'Subscribe'}
                 </Text>
               </Pressable>
             </View>
           )}
-          
+
           {/* Stats Section */}
           <View style={styles.statsSection}>
             <Text style={styles.sectionTitle}>Stats</Text>
@@ -300,12 +341,14 @@ export default function PublicProfileScreen() {
               ))}
             </View>
           </View>
-
         </ScrollView>
-        
+
         {viewerChecked && !viewerId && (
           <View style={styles.authCtaRow}>
-            <Pressable style={[styles.actionButton, styles.subscribeButton]} onPress={() => setShowAuthModal(true)}>
+            <Pressable
+              style={[styles.actionButton, styles.subscribeButton]}
+              onPress={() => setShowAuthModal(true)}
+            >
               <Text style={styles.actionButtonText}>Sign in to subscribe</Text>
             </Pressable>
           </View>
@@ -320,7 +363,10 @@ export default function PublicProfileScreen() {
       >
         <View style={styles.authModalBackdrop}>
           <AuthSection keyboardOffset={0} />
-          <Pressable style={styles.authModalDismiss} onPress={() => setShowAuthModal(false)}>
+          <Pressable
+            style={styles.authModalDismiss}
+            onPress={() => setShowAuthModal(false)}
+          >
             <Text style={styles.authModalDismissText}>Close</Text>
           </Pressable>
         </View>
@@ -330,9 +376,61 @@ export default function PublicProfileScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: {
+  actionButton: {
+    alignItems: 'center',
+    borderRadius: DaPaintRadius.sm,
+    minWidth: 120,
+    paddingHorizontal: DaPaintSpacing.lg,
+    paddingVertical: DaPaintSpacing.sm,
+  },
+  actionButtonText: {
+    color: '#FFFFFF',
+    ...DaPaintTypography.labelMedium,
+  },
+  actionContainer: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    marginBottom: DaPaintSpacing.xl,
+  },
+  authCtaRow: {
+    alignItems: 'center',
+    marginBottom: DaPaintSpacing.xl,
+  },
+  authModalBackdrop: {
+    backgroundColor: 'rgba(0,0,0,0.35)',
     flex: 1,
+    justifyContent: 'flex-end',
+  },
+  authModalDismiss: {
+    alignSelf: 'center',
+    marginBottom: DaPaintSpacing.lg,
+    marginTop: DaPaintSpacing.sm,
+  },
+  authModalDismissText: {
+    color: DaPaintColors.textPrimary,
+    ...DaPaintTypography.bodySmall,
+  },
+  avatar: {
+    height: '100%',
+    width: '100%',
+  },
+  avatarContainer: {
+    borderColor: DaPaintColors.primaryDeep,
+    borderRadius: DaPaintRadius.full,
+    borderWidth: 3,
+    height: 120,
+    marginBottom: DaPaintSpacing.md,
+    overflow: 'hidden',
+    width: 120,
+    ...DaPaintShadows.medium,
+  },
+  container: {
     backgroundColor: DaPaintColors.bg0,
+    flex: 1,
+  },
+  contentContainer: {
+    paddingBottom: 160, // Extra padding to account for bottom tab bar
+    padding: DaPaintSpacing.lg,
   },
   contentWrapper: {
     flex: 1,
@@ -340,104 +438,31 @@ const styles = StyleSheet.create({
     alignSelf: 'center',
     width: '100%',
   },
-  scrollView: {
-    flex: 1,
-  },
-  contentContainer: {
-    paddingBottom: 160, // Extra padding to account for bottom tab bar
-    padding: DaPaintSpacing.lg,
-  },
-  loadingContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  loadingText: {
-    color: DaPaintColors.textPrimary,
-    ...DaPaintTypography.bodyLarge,
-  },
-  headerContainer: {
-    alignItems: 'center',
-    marginBottom: DaPaintSpacing.xl,
-  },
-  avatarContainer: {
-    width: 120,
-    height: 120,
-    borderRadius: DaPaintRadius.full,
-    overflow: 'hidden',
-    borderWidth: 3,
-    borderColor: DaPaintColors.primaryDeep,
-    marginBottom: DaPaintSpacing.md,
-    ...DaPaintShadows.medium,
-  },
-  avatar: {
-    width: '100%',
-    height: '100%',
-  },
-  userInfoContainer: {
-    alignItems: 'center',
-    marginBottom: DaPaintSpacing.md,
-  },
   displayName: {
     color: DaPaintColors.textPrimary,
     ...DaPaintTypography.displayMedium,
     marginBottom: DaPaintSpacing.xxs,
   },
-  username: {
-    color: DaPaintColors.textSecondary,
-    ...DaPaintTypography.bodyMedium,
-    marginBottom: DaPaintSpacing.xxs,
+  headerContainer: {
+    alignItems: 'center',
+    marginBottom: DaPaintSpacing.xl,
+  },
+  loadingContainer: {
+    alignItems: 'center',
+    flex: 1,
+    justifyContent: 'center',
+  },
+  loadingText: {
+    color: DaPaintColors.textPrimary,
+    ...DaPaintTypography.bodyLarge,
   },
   location: {
     color: DaPaintColors.textTertiary,
     ...DaPaintTypography.bodySmall,
     marginBottom: DaPaintSpacing.xxs,
   },
-  subscriberCount: {
-    color: DaPaintColors.textTertiary,
-    ...DaPaintTypography.bodySmall,
-  },
-  actionContainer: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    marginBottom: DaPaintSpacing.xl,
-  },
-  actionButton: {
-    paddingVertical: DaPaintSpacing.sm,
-    paddingHorizontal: DaPaintSpacing.lg,
-    borderRadius: DaPaintRadius.sm,
-    alignItems: 'center',
-    minWidth: 120,
-  },
-  subscribeButton: {
-    backgroundColor: DaPaintColors.primaryDeep,
-    borderWidth: 1,
-    borderColor: DaPaintColors.primaryDeep,
-  },
-  actionButtonText: {
-    color: '#FFFFFF',
-    ...DaPaintTypography.labelMedium,
-  },
-  authCtaRow: {
-    alignItems: 'center',
-    marginBottom: DaPaintSpacing.xl,
-  },
-  authModalBackdrop: {
+  scrollView: {
     flex: 1,
-    justifyContent: 'flex-end',
-    backgroundColor: 'rgba(0,0,0,0.35)',
-  },
-  authModalDismiss: {
-    alignSelf: 'center',
-    marginTop: DaPaintSpacing.sm,
-    marginBottom: DaPaintSpacing.lg,
-  },
-  authModalDismissText: {
-    color: DaPaintColors.textPrimary,
-    ...DaPaintTypography.bodySmall,
-  },
-  statsSection: {
-    marginBottom: DaPaintSpacing.xl,
   },
   sectionTitle: {
     ...DaPaintTypography.displaySmall,
@@ -445,31 +470,52 @@ const styles = StyleSheet.create({
     marginBottom: DaPaintSpacing.md,
     textAlign: 'center',
   },
-  statsGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    justifyContent: 'space-between',
-    gap: DaPaintSpacing.sm,
-  },
   statCard: {
+    alignItems: 'center',
+    backgroundColor: DaPaintButtons.faq.background,
+    borderColor: DaPaintButtons.faq.border,
+    borderRadius: DaPaintRadius.md,
+    borderWidth: 1,
     flex: 1,
     minWidth: '48%',
-    paddingVertical: DaPaintSpacing.md,
     paddingHorizontal: DaPaintSpacing.md,
-    borderRadius: DaPaintRadius.md,
-    backgroundColor: DaPaintButtons.faq.background,
-    borderWidth: 1,
-    borderColor: DaPaintButtons.faq.border,
-    alignItems: 'center',
+    paddingVertical: DaPaintSpacing.md,
+  },
+  statLabel: {
+    ...DaPaintTypography.bodySmall,
+    color: DaPaintColors.textTertiary,
+    textAlign: 'center',
   },
   statValue: {
     ...DaPaintTypography.displaySmall,
     color: DaPaintColors.textPrimary,
     marginBottom: DaPaintSpacing.xxs,
   },
-  statLabel: {
-    ...DaPaintTypography.bodySmall,
+  statsGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: DaPaintSpacing.sm,
+    justifyContent: 'space-between',
+  },
+  statsSection: {
+    marginBottom: DaPaintSpacing.xl,
+  },
+  subscribeButton: {
+    backgroundColor: DaPaintColors.primaryDeep,
+    borderColor: DaPaintColors.primaryDeep,
+    borderWidth: 1,
+  },
+  subscriberCount: {
     color: DaPaintColors.textTertiary,
-    textAlign: 'center',
+    ...DaPaintTypography.bodySmall,
+  },
+  userInfoContainer: {
+    alignItems: 'center',
+    marginBottom: DaPaintSpacing.md,
+  },
+  username: {
+    color: DaPaintColors.textSecondary,
+    ...DaPaintTypography.bodyMedium,
+    marginBottom: DaPaintSpacing.xxs,
   },
 });

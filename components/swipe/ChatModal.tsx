@@ -1,4 +1,5 @@
-﻿import { useEffect, useMemo, useState } from "react";
+﻿import { BlurView } from 'expo-blur';
+import { useEffect, useMemo, useState, useRef } from 'react';
 import {
   View,
   Text,
@@ -10,12 +11,14 @@ import {
   KeyboardAvoidingView,
   Platform,
   Keyboard,
-} from "react-native";
-import { BlurView } from "expo-blur";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { useRef } from "react";
-import { theme } from "../../constants/theme";
-import { getKeyboardDismissHandler, stopEventOnWeb } from "../../lib/webFocusGuard";
+} from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+
+import { theme } from '../../constants/theme';
+import {
+  getKeyboardDismissHandler,
+  stopEventOnWeb,
+} from '../../lib/webFocusGuard';
 
 type ChatModalProps = {
   visible: boolean;
@@ -32,17 +35,20 @@ export default function ChatModal({
   onClose,
   onSendMessage,
 }: ChatModalProps) {
-  const [newMessage, setNewMessage] = useState("");
+  const [newMessage, setNewMessage] = useState('');
   const [keyboardOffset, setKeyboardOffset] = useState(0);
   const scrollRef = useRef<ScrollView>(null);
   const insets = useSafeAreaInsets();
   const dismissKeyboard = getKeyboardDismissHandler();
 
   useEffect(() => {
-    const showEvent = Platform.OS === "android" ? "keyboardDidShow" : "keyboardWillShow";
-    const hideEvent = Platform.OS === "android" ? "keyboardDidHide" : "keyboardWillHide";
+    const showEvent =
+      Platform.OS === 'android' ? 'keyboardDidShow' : 'keyboardWillShow';
+    const hideEvent =
+      Platform.OS === 'android' ? 'keyboardDidHide' : 'keyboardWillHide';
 
-    const onShow = (e: any) => setKeyboardOffset(e?.endCoordinates?.height ?? 0);
+    const onShow = (e: any) =>
+      setKeyboardOffset(e?.endCoordinates?.height ?? 0);
     const onHide = () => setKeyboardOffset(0);
 
     const showSub = Keyboard.addListener(showEvent, onShow);
@@ -65,26 +71,38 @@ export default function ChatModal({
     const trimmed = newMessage.trim();
     if (!trimmed) return;
     onSendMessage(trimmed);
-    setNewMessage("");
+    setNewMessage('');
   };
 
   const bottomPadding =
-    (Platform.OS === "ios" ? theme.space.xxl : theme.space.md) + insets.bottom + keyboardOffset;
+    (Platform.OS === 'ios' ? theme.space.xxl : theme.space.md) +
+    insets.bottom +
+    keyboardOffset;
 
   useEffect(() => {
     // Auto-scroll to bottom when new messages arrive
     if (scrollRef.current) {
-      requestAnimationFrame(() => scrollRef.current?.scrollToEnd({ animated: true }));
+      requestAnimationFrame(() =>
+        scrollRef.current?.scrollToEnd({ animated: true })
+      );
     }
   }, [sorted]);
 
   return (
-    <Modal visible={visible} animationType="slide" presentationStyle="pageSheet">
-      <Pressable onPress={dismissKeyboard} accessible={false} style={styles.touchGuard}>
+    <Modal
+      visible={visible}
+      animationType="slide"
+      presentationStyle="pageSheet"
+    >
+      <Pressable
+        onPress={dismissKeyboard}
+        accessible={false}
+        style={styles.touchGuard}
+      >
         <KeyboardAvoidingView
           style={styles.container}
-          behavior={Platform.OS === "ios" ? "padding" : "height"}
-          keyboardVerticalOffset={Platform.OS === "ios" ? insets.top : 0}
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+          keyboardVerticalOffset={Platform.OS === 'ios' ? insets.top : 0}
         >
           <View style={styles.header}>
             <Text style={styles.title}>Chat</Text>
@@ -99,12 +117,23 @@ export default function ChatModal({
             contentContainerStyle={styles.scrollContent}
             keyboardShouldPersistTaps="handled"
           >
-            {sorted.map((msg) => {
+            {sorted.map(msg => {
               const mine = msg.user_id === userId;
-              const name = msg.user?.display_name || "User";
+              const name = msg.user?.display_name || 'User';
               return (
-                <View key={msg.id} style={[styles.bubbleRow, mine ? styles.rowMine : styles.rowTheirs]}>
-                  <View style={[styles.bubble, mine ? styles.bubbleMine : styles.bubbleTheirs]}>
+                <View
+                  key={msg.id}
+                  style={[
+                    styles.bubbleRow,
+                    mine ? styles.rowMine : styles.rowTheirs,
+                  ]}
+                >
+                  <View
+                    style={[
+                      styles.bubble,
+                      mine ? styles.bubbleMine : styles.bubbleTheirs,
+                    ]}
+                  >
                     {!mine && <Text style={styles.author}>{name}</Text>}
                     <Text style={styles.message}>{msg.message}</Text>
                   </View>
@@ -113,7 +142,11 @@ export default function ChatModal({
             })}
           </ScrollView>
 
-          <BlurView intensity={28} tint="light" style={[styles.bottomBar, { paddingBottom: bottomPadding }]}>
+          <BlurView
+            intensity={28}
+            tint="light"
+            style={[styles.bottomBar, { paddingBottom: bottomPadding }]}
+          >
             <View style={styles.inputRow}>
               <TextInput
                 style={styles.input}
@@ -137,120 +170,119 @@ export default function ChatModal({
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: "transparent",
+  author: {
+    ...theme.type.labelSmall,
+    color: theme.colors.textSecondary,
+    marginBottom: theme.space.xxxs,
   },
-  header: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
+  bottomBar: {
+    backgroundColor: 'rgba(255,255,255,0.92)',
+    borderTopColor: theme.colors.border,
+    borderTopWidth: 1,
+    bottom: 0,
+    left: 0,
+    overflow: 'hidden',
     paddingHorizontal: theme.space.lg,
-    paddingTop: Platform.OS === "ios" ? theme.space.xxl : theme.space.lg,
-    paddingBottom: theme.space.md,
-    borderBottomWidth: 1,
-    borderBottomColor: theme.colors.border,
-    backgroundColor: "rgba(255,255,255,0.9)",
+    paddingTop: theme.space.sm,
+    position: 'absolute',
+    right: 0,
   },
-  title: {
-    ...theme.type.displaySmall,
-    color: theme.colors.textPrimary,
-  },
-  closeBtn: {
-    width: 40,
-    height: 40,
-    borderRadius: theme.radius.full,
-    backgroundColor: theme.colors.surface,
-    borderWidth: 1,
-    borderColor: theme.colors.border,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  closeText: {
-    fontSize: 18,
-    color: theme.colors.textPrimary,
-  },
-  touchGuard: { flex: 1 },
-
-  scroll: { flex: 1 },
-  scrollContent: {
-    padding: theme.space.lg,
-    paddingBottom: 20,
-    gap: theme.space.sm,
-  },
-
-  bubbleRow: {
-    flexDirection: "row",
-  },
-  rowMine: { justifyContent: "flex-end" },
-  rowTheirs: { justifyContent: "flex-start" },
-
   bubble: {
-    maxWidth: "82%",
     borderRadius: theme.radius.lg,
-    padding: theme.space.sm,
     borderWidth: 1,
+    maxWidth: '82%',
+    padding: theme.space.sm,
   },
   bubbleMine: {
-    backgroundColor: "rgba(46,196,255,0.14)",
-    borderColor: "rgba(46,196,255,0.25)",
+    backgroundColor: 'rgba(46,196,255,0.14)',
+    borderColor: 'rgba(46,196,255,0.25)',
+  },
+  bubbleRow: {
+    flexDirection: 'row',
   },
   bubbleTheirs: {
     backgroundColor: theme.colors.surface,
     borderColor: theme.colors.border,
   },
 
-  author: {
-    ...theme.type.labelSmall,
-    color: theme.colors.textSecondary,
-    marginBottom: theme.space.xxxs,
+  closeBtn: {
+    alignItems: 'center',
+    backgroundColor: theme.colors.surface,
+    borderColor: theme.colors.border,
+    borderRadius: theme.radius.full,
+    borderWidth: 1,
+    height: 40,
+    justifyContent: 'center',
+    width: 40,
+  },
+  closeText: {
+    color: theme.colors.textPrimary,
+    fontSize: 18,
+  },
+
+  container: {
+    backgroundColor: 'transparent',
+    flex: 1,
+  },
+  header: {
+    alignItems: 'center',
+    backgroundColor: 'rgba(255,255,255,0.9)',
+    borderBottomColor: theme.colors.border,
+    borderBottomWidth: 1,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    paddingBottom: theme.space.md,
+    paddingHorizontal: theme.space.lg,
+    paddingTop: Platform.OS === 'ios' ? theme.space.xxl : theme.space.lg,
+  },
+  input: {
+    backgroundColor: theme.colors.surface,
+    borderColor: theme.colors.border,
+    borderRadius: theme.radius.md,
+    borderWidth: 1,
+    color: theme.colors.textPrimary,
+    flex: 1,
+    minHeight: 48,
+    paddingHorizontal: theme.space.md,
+    paddingVertical: theme.space.sm,
+    ...theme.type.bodyLarge,
+  },
+
+  inputRow: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    gap: theme.space.sm,
   },
   message: {
     ...theme.type.bodyLarge,
     color: theme.colors.textPrimary,
   },
+  rowMine: { justifyContent: 'flex-end' },
 
-  bottomBar: {
-    position: "absolute",
-    left: 0,
-    right: 0,
-    bottom: 0,
-    paddingHorizontal: theme.space.lg,
-    paddingTop: theme.space.sm,
-    borderTopWidth: 1,
-    borderTopColor: theme.colors.border,
-    overflow: "hidden",
-    backgroundColor: "rgba(255,255,255,0.92)",
-  },
-  inputRow: {
-    flexDirection: "row",
+  rowTheirs: { justifyContent: 'flex-start' },
+  scroll: { flex: 1 },
+
+  scrollContent: {
     gap: theme.space.sm,
-    alignItems: "center",
-  },
-  input: {
-    flex: 1,
-    minHeight: 48,
-    borderRadius: theme.radius.md,
-    paddingHorizontal: theme.space.md,
-    paddingVertical: theme.space.sm,
-    backgroundColor: theme.colors.surface,
-    borderWidth: 1,
-    borderColor: theme.colors.border,
-    color: theme.colors.textPrimary,
-    ...theme.type.bodyLarge,
+    padding: theme.space.lg,
+    paddingBottom: 20,
   },
   sendBtn: {
-    paddingHorizontal: theme.space.lg,
-    height: 48,
-    borderRadius: theme.radius.md,
-    alignItems: "center",
-    justifyContent: "center",
+    alignItems: 'center',
     backgroundColor: theme.colors.primaryDeep,
+    borderRadius: theme.radius.md,
+    height: 48,
+    justifyContent: 'center',
+    paddingHorizontal: theme.space.lg,
     ...theme.shadow.glowPrimary,
   },
   sendText: {
     ...theme.type.labelMedium,
-    color: "#FFFFFF",
+    color: '#FFFFFF',
   },
+  title: {
+    ...theme.type.displaySmall,
+    color: theme.colors.textPrimary,
+  },
+  touchGuard: { flex: 1 },
 });
-

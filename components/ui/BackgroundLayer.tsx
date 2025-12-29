@@ -1,6 +1,6 @@
-import React from "react";
-import { View, StyleSheet, Image, Platform } from "react-native";
-import { LinearGradient } from "expo-linear-gradient";
+import { LinearGradient } from 'expo-linear-gradient';
+import React from 'react';
+import { View, StyleSheet, Image, Platform } from 'react-native';
 
 interface BackgroundLayerProps {
   zIndex?: number;
@@ -9,12 +9,13 @@ interface BackgroundLayerProps {
 export default function BackgroundLayer({ zIndex = -1 }: BackgroundLayerProps) {
   // Web-specific props to prevent focus and accessibility warnings
   // Don't apply aria-hidden to the main container as it may become an ancestor of focusable elements
-  const webProps = Platform.OS === "web" 
-    ? { 
-        // @ts-ignore - web-only props
-        // aria-hidden is removed from container to prevent accessibility conflicts
-      } 
-    : {};
+  const webProps =
+    Platform.OS === 'web'
+      ? {
+          // @ts-ignore - web-only props
+          // aria-hidden is removed from container to prevent accessibility conflicts
+        }
+      : {};
 
   return (
     <View
@@ -22,15 +23,17 @@ export default function BackgroundLayer({ zIndex = -1 }: BackgroundLayerProps) {
       {...webProps}
     >
       <Image
-        source={require("../../assets/DaPaintbg.jpeg")}
+        source={require('../../assets/DaPaintbg.jpeg')}
         style={styles.image}
         resizeMode="cover"
         // Also mark image as decorative
-        {...(Platform.OS === 'web' ? { 
-          // @ts-ignore
-          'aria-hidden': true,
-          alt: '' 
-        } : {})}
+        {...(Platform.OS === 'web'
+          ? {
+              // @ts-ignore
+              'aria-hidden': true,
+              alt: '',
+            }
+          : {})}
       />
       {/* Background gradient overlay for text readability */}
       <LinearGradient
@@ -46,21 +49,21 @@ export default function BackgroundLayer({ zIndex = -1 }: BackgroundLayerProps) {
 
 const styles = StyleSheet.create({
   container: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
     bottom: 0,
-  },
-  image: {
-    width: '100%',
-    height: '100%',
+    left: 0,
+    position: 'absolute',
+    right: 0,
+    top: 0,
   },
   gradient: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
     bottom: 0,
+    left: 0,
+    position: 'absolute',
+    right: 0,
+    top: 0,
+  },
+  image: {
+    height: '100%',
+    width: '100%',
   },
 });

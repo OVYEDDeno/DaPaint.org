@@ -1,5 +1,12 @@
 // components/swipe/SwipeFeed.tsx — cinematic swipe with bottom actions and info modal
-import React, { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import React, {
+  memo,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import {
   View,
   Text,
@@ -12,17 +19,16 @@ import {
   Modal,
   ScrollView,
   Share,
-} from "react-native";
+} from 'react-native';
 
-import SwipeCard from "./SwipeCard";
-import type { DaPaint } from "../../lib/api/dapaints";
-import { theme } from "../../constants/theme";
+import { theme } from '../../constants/theme';
+import type { DaPaint } from '../../lib/api/dapaints';
 
-const { width: SCREEN_WIDTH } = Dimensions.get("window");
+import SwipeCard from './SwipeCard';
+
+const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const SWIPE_THRESHOLD = SCREEN_WIDTH * 0.38;
-const USE_NATIVE_DRIVER = Platform.OS !== "web";
-
-
+const USE_NATIVE_DRIVER = Platform.OS !== 'web';
 
 type SwipeFeedProps = {
   dapaints: DaPaint[];
@@ -32,7 +38,13 @@ type SwipeFeedProps = {
   topOffset?: number;
 };
 
-function SwipeFeedComponent({ dapaints, onSwipeLeft, onSwipeRight, onExhausted, topOffset = 0 }: SwipeFeedProps) {
+function SwipeFeedComponent({
+  dapaints,
+  onSwipeLeft,
+  onSwipeRight,
+  onExhausted,
+  topOffset = 0,
+}: SwipeFeedProps) {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [skippedCards, setSkippedCards] = useState<DaPaint[]>([]);
   const [showInfoModal, setShowInfoModal] = useState(false);
@@ -40,8 +52,14 @@ function SwipeFeedComponent({ dapaints, onSwipeLeft, onSwipeRight, onExhausted, 
   const position = useRef(new Animated.ValueXY({ x: 0, y: 0 })).current;
   const scale = useRef(new Animated.Value(1)).current;
 
-  const currentCard = useMemo(() => dapaints[currentIndex], [dapaints, currentIndex]);
-  const nextCard = useMemo(() => dapaints[currentIndex + 1], [dapaints, currentIndex]);
+  const currentCard = useMemo(
+    () => dapaints[currentIndex],
+    [dapaints, currentIndex]
+  );
+  const nextCard = useMemo(
+    () => dapaints[currentIndex + 1],
+    [dapaints, currentIndex]
+  );
 
   const resetCard = useCallback(() => {
     position.setValue({ x: 0, y: 0 });
@@ -59,8 +77,8 @@ function SwipeFeedComponent({ dapaints, onSwipeLeft, onSwipeRight, onExhausted, 
     () =>
       position.x.interpolate({
         inputRange: [-SCREEN_WIDTH / 2, 0, SCREEN_WIDTH / 2],
-        outputRange: ["-12deg", "0deg", "12deg"],
-        extrapolate: "clamp",
+        outputRange: ['-12deg', '0deg', '12deg'],
+        extrapolate: 'clamp',
       }),
     [position.x]
   );
@@ -70,7 +88,7 @@ function SwipeFeedComponent({ dapaints, onSwipeLeft, onSwipeRight, onExhausted, 
       position.x.interpolate({
         inputRange: [-SCREEN_WIDTH / 2, 0],
         outputRange: [1, 0],
-        extrapolate: "clamp",
+        extrapolate: 'clamp',
       }),
     [position.x]
   );
@@ -80,16 +98,17 @@ function SwipeFeedComponent({ dapaints, onSwipeLeft, onSwipeRight, onExhausted, 
       position.x.interpolate({
         inputRange: [0, SCREEN_WIDTH / 2],
         outputRange: [0, 1],
-        extrapolate: "clamp",
+        extrapolate: 'clamp',
       }),
     [position.x]
   );
 
   const animateCardExit = useCallback(
-    (direction: "left" | "right") => {
+    (direction: 'left' | 'right') => {
       if (!currentCard) return;
 
-      const toX = direction === "right" ? SCREEN_WIDTH * 1.35 : -SCREEN_WIDTH * 1.35;
+      const toX =
+        direction === 'right' ? SCREEN_WIDTH * 1.35 : -SCREEN_WIDTH * 1.35;
 
       Animated.parallel([
         Animated.spring(position, {
@@ -104,14 +123,14 @@ function SwipeFeedComponent({ dapaints, onSwipeLeft, onSwipeRight, onExhausted, 
           useNativeDriver: USE_NATIVE_DRIVER,
         }),
       ]).start(() => {
-        if (direction === "left") {
+        if (direction === 'left') {
           onSwipeLeft(currentCard);
-          setSkippedCards((prev) => [...prev, currentCard]);
+          setSkippedCards(prev => [...prev, currentCard]);
         } else {
           onSwipeRight(currentCard);
         }
 
-        setCurrentIndex((prev) => prev + 1);
+        setCurrentIndex(prev => prev + 1);
         resetCard();
       });
     },
@@ -123,8 +142,8 @@ function SwipeFeedComponent({ dapaints, onSwipeLeft, onSwipeRight, onExhausted, 
 
     const lastSkipped = skippedCards[skippedCards.length - 1];
     if (!lastSkipped) return;
-    
-    const lastIndex = dapaints.findIndex((d) => d.id === lastSkipped.id);
+
+    const lastIndex = dapaints.findIndex(d => d.id === lastSkipped.id);
     if (lastIndex === -1) return;
 
     position.setValue({ x: -SCREEN_WIDTH, y: 0 });
@@ -136,12 +155,18 @@ function SwipeFeedComponent({ dapaints, onSwipeLeft, onSwipeRight, onExhausted, 
       bounciness: 4,
     }).start();
 
-    setSkippedCards((prev) => prev.slice(0, -1));
+    setSkippedCards(prev => prev.slice(0, -1));
     setCurrentIndex(lastIndex);
   }, [dapaints, position, skippedCards]);
 
-  const handleSkip = useCallback(() => animateCardExit("left"), [animateCardExit]);
-  const handleJoin = useCallback(() => animateCardExit("right"), [animateCardExit]);
+  const handleSkip = useCallback(
+    () => animateCardExit('left'),
+    [animateCardExit]
+  );
+  const handleJoin = useCallback(
+    () => animateCardExit('right'),
+    [animateCardExit]
+  );
   const handleInfo = useCallback(() => setShowInfoModal(true), []);
   const handleShare = useCallback(async () => {
     if (!currentCard) return;
@@ -150,7 +175,7 @@ function SwipeFeedComponent({ dapaints, onSwipeLeft, onSwipeRight, onExhausted, 
         message: `Check out this DaPaint: ${currentCard.dapaint} in ${currentCard.city}.`,
       });
     } catch (e) {
-      console.warn("Share failed", e);
+      console.warn('Share failed', e);
     }
   }, [currentCard]);
 
@@ -161,17 +186,17 @@ function SwipeFeedComponent({ dapaints, onSwipeLeft, onSwipeRight, onExhausted, 
   }, [currentIndex, dapaints.length, onExhausted]);
 
   useEffect(() => {
-    if (Platform.OS !== "web") return;
+    if (Platform.OS !== 'web') return;
 
     const onKeyDown = (e: KeyboardEvent) => {
       const k = e.key.toLowerCase();
-      if (k === "a" || e.key === "ArrowLeft") handleSkip();
-      if (k === "s" || e.key === "ArrowDown") handleBack();
-      if (k === "d" || e.key === "ArrowRight") handleJoin();
+      if (k === 'a' || e.key === 'ArrowLeft') handleSkip();
+      if (k === 's' || e.key === 'ArrowDown') handleBack();
+      if (k === 'd' || e.key === 'ArrowRight') handleJoin();
     };
 
-    window.addEventListener("keydown", onKeyDown);
-    return () => window.removeEventListener("keydown", onKeyDown);
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
   }, [handleBack, handleJoin, handleSkip]);
 
   const panResponder = useRef(
@@ -234,18 +259,35 @@ function SwipeFeedComponent({ dapaints, onSwipeLeft, onSwipeRight, onExhausted, 
       </Animated.View>
 
       {/* indicators */}
-      <Animated.View style={[styles.indicator, styles.skipIndicator, { opacity: skipOpacity }]}>
+      <Animated.View
+        style={[
+          styles.indicator,
+          styles.skipIndicator,
+          { opacity: skipOpacity },
+        ]}
+      >
         <Text style={styles.indicatorText}>SKIP</Text>
       </Animated.View>
 
-      <Animated.View style={[styles.indicator, styles.joinIndicator, { opacity: joinOpacity }]}>
+      <Animated.View
+        style={[
+          styles.indicator,
+          styles.joinIndicator,
+          { opacity: joinOpacity },
+        ]}
+      >
         <Text style={styles.indicatorText}>JOIN</Text>
       </Animated.View>
 
       {/* bottom action bar */}
       <View
-        style={[styles.bottomBarWrap, Platform.OS === "web" ? ({ pointerEvents: "box-none" } as any) : null]}
-        {...(Platform.OS === "web" ? {} : ({ pointerEvents: "box-none" } as const))}
+        style={[
+          styles.bottomBarWrap,
+          Platform.OS === 'web' ? ({ pointerEvents: 'box-none' } as any) : null,
+        ]}
+        {...(Platform.OS === 'web'
+          ? {}
+          : ({ pointerEvents: 'box-none' } as const))}
       >
         <View style={styles.bottomBar}>
           <View style={styles.actions}>
@@ -261,19 +303,47 @@ function SwipeFeedComponent({ dapaints, onSwipeLeft, onSwipeRight, onExhausted, 
               <Text style={styles.icon}>↺</Text>
             </Pressable>
 
-            <Pressable style={({ pressed }) => [styles.btnBig, styles.btnSkip, pressed && styles.pressed]} onPress={handleSkip}>
+            <Pressable
+              style={({ pressed }) => [
+                styles.btnBig,
+                styles.btnSkip,
+                pressed && styles.pressed,
+              ]}
+              onPress={handleSkip}
+            >
               <Text style={styles.iconBig}>✕</Text>
             </Pressable>
 
-            <Pressable style={({ pressed }) => [styles.btnSmall, styles.btnInfo, pressed && styles.pressed]} onPress={handleInfo}>
+            <Pressable
+              style={({ pressed }) => [
+                styles.btnSmall,
+                styles.btnInfo,
+                pressed && styles.pressed,
+              ]}
+              onPress={handleInfo}
+            >
               <Text style={styles.icon}>❓</Text>
             </Pressable>
 
-            <Pressable style={({ pressed }) => [styles.btnBig, styles.btnJoin, pressed && styles.pressed]} onPress={handleJoin}>
+            <Pressable
+              style={({ pressed }) => [
+                styles.btnBig,
+                styles.btnJoin,
+                pressed && styles.pressed,
+              ]}
+              onPress={handleJoin}
+            >
               <Text style={styles.iconBig}>⚔️</Text>
             </Pressable>
 
-            <Pressable style={({ pressed }) => [styles.btnSmall, styles.btnShare, pressed && styles.pressed]} onPress={handleShare}>
+            <Pressable
+              style={({ pressed }) => [
+                styles.btnSmall,
+                styles.btnShare,
+                pressed && styles.pressed,
+              ]}
+              onPress={handleShare}
+            >
               <Text style={styles.icon}>🔗</Text>
             </Pressable>
           </View>
@@ -292,20 +362,48 @@ function SwipeFeedComponent({ dapaints, onSwipeLeft, onSwipeRight, onExhausted, 
             <ScrollView showsVerticalScrollIndicator={false}>
               <Text style={styles.modalTitle}>{currentCard.dapaint}</Text>
 
-              <InfoRow label="📍 Location" value={`${currentCard.location}, ${currentCard.city}, ${currentCard.zipcode}`} />
-              <InfoRow label="⏰ Date & Time" value={new Date(currentCard.starts_at).toLocaleString()} />
-              <InfoRow label="🏅 Win by" value={currentCard.how_winner_is_determined} />
+              <InfoRow
+                label="📍 Location"
+                value={`${currentCard.location}, ${currentCard.city}, ${currentCard.zipcode}`}
+              />
+              <InfoRow
+                label="⏰ Date & Time"
+                value={new Date(currentCard.starts_at).toLocaleString()}
+              />
+              <InfoRow
+                label="🏅 Win by"
+                value={currentCard.how_winner_is_determined}
+              />
 
-              {!!currentCard.description && <InfoRow label="📝 Description" value={currentCard.description} />}
-              {!!currentCard.rules_of_dapaint && <InfoRow label="📜 Rules" value={currentCard.rules_of_dapaint} />}
+              {!!currentCard.description && (
+                <InfoRow
+                  label="📝 Description"
+                  value={currentCard.description}
+                />
+              )}
+              {!!currentCard.rules_of_dapaint && (
+                <InfoRow
+                  label="📜 Rules"
+                  value={currentCard.rules_of_dapaint}
+                />
+              )}
 
               <InfoRow label="👤 Host" value={currentCard.host_display_name} />
-              <InfoRow label="🎯 Type" value={currentCard.dapaint_type === "1v1" ? "1v1" : "Team"} />
+              <InfoRow
+                label="🎯 Type"
+                value={currentCard.dapaint_type === '1v1' ? '1v1' : 'Team'}
+              />
 
               <TicketPriceInfo price={currentCard.ticket_price} />
             </ScrollView>
 
-            <Pressable style={({ pressed }) => [styles.closeBtn, pressed && styles.pressed]} onPress={() => setShowInfoModal(false)}>
+            <Pressable
+              style={({ pressed }) => [
+                styles.closeBtn,
+                pressed && styles.pressed,
+              ]}
+              onPress={() => setShowInfoModal(false)}
+            >
               <Text style={styles.closeText}>Close</Text>
             </Pressable>
           </View>
@@ -325,7 +423,7 @@ function InfoRow({ label, value }: { label: string; value: string }) {
 }
 
 function TicketPriceInfo({ price }: { price?: string | null }) {
-  const parsedPrice = Number.parseFloat(String(price ?? "0")) || 0;
+  const parsedPrice = Number.parseFloat(String(price ?? '0')) || 0;
   if (parsedPrice <= 0) return null;
 
   return <InfoRow label="💵 Entry" value={`$${parsedPrice.toFixed(2)}`} />;
@@ -336,14 +434,14 @@ export default SwipeFeed;
 
 const styles = StyleSheet.create({
   container: {
-    flex: 1,
+    alignItems: 'center',
     backgroundColor: 'transparent',
-    justifyContent: "center",
-    alignItems: "center",
+    flex: 1,
+    justifyContent: 'center',
     paddingBottom: 90,
   },
   cardContainer: {
-    position: "absolute",
+    position: 'absolute',
     zIndex: 0,
   },
   nextPreview: {
@@ -353,26 +451,26 @@ const styles = StyleSheet.create({
   },
 
   indicator: {
-    position: "absolute",
-    top: 110,
-    paddingHorizontal: theme.space.md,
-    paddingVertical: theme.space.xs,
+    backgroundColor: 'rgba(255,255,255,0.9)',
+    borderColor: theme.colors.border,
     borderRadius: theme.radius.md,
     borderWidth: 1,
-    backgroundColor: "rgba(255,255,255,0.9)",
-    borderColor: theme.colors.border,
+    paddingHorizontal: theme.space.md,
+    paddingVertical: theme.space.xs,
+    position: 'absolute',
+    top: 110,
     zIndex: 5,
   },
   skipIndicator: {
-    left: 28,
     borderColor: theme.colors.nope,
-    transform: [{ rotate: "-18deg" }],
+    left: 28,
+    transform: [{ rotate: '-18deg' }],
     zIndex: 5,
   },
   joinIndicator: {
-    right: 28,
     borderColor: theme.colors.like,
-    transform: [{ rotate: "18deg" }],
+    right: 28,
+    transform: [{ rotate: '18deg' }],
     zIndex: 5,
   },
   indicatorText: {
@@ -382,36 +480,36 @@ const styles = StyleSheet.create({
   },
 
   bottomBarWrap: {
-    position: "absolute",
-    left: theme.space.md,
-    right: theme.space.md,
     bottom: 60,
+    left: theme.space.md,
+    position: 'absolute',
+    right: theme.space.md,
     zIndex: 6,
   },
   bottomBar: {
     borderRadius: theme.radius.xl,
-    overflow: "hidden",
     borderWidth: 0,
+    overflow: 'hidden',
   },
   actions: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
+    alignItems: 'center',
+    flexDirection: 'row',
     gap: theme.space.sm,
-    paddingVertical: theme.space.xxs,
+    justifyContent: 'center',
     paddingHorizontal: theme.space.xxs,
+    paddingVertical: theme.space.xxs,
   },
 
   btnSmall: {
-    width: 44,
-    height: 44,
+    backgroundColor: 'rgba(0,92,130,0.08)',
+    borderColor: 'transparent',
     borderRadius: 14,
-    backgroundColor: "rgba(0,92,130,0.08)",
     borderWidth: 0,
-    borderColor: "transparent",
+    height: 44,
+    width: 44,
     ...Platform.select({
       web: {
-        boxShadow: "0px 6px 9px rgba(0,92,130,0.12)",
+        boxShadow: '0px 6px 9px rgba(0,92,130,0.12)',
       },
       default: {
         shadowColor: theme.colors.primaryDeep,
@@ -421,26 +519,26 @@ const styles = StyleSheet.create({
         elevation: 2,
       },
     }),
-    justifyContent: "center",
-    alignItems: "center",
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   btnBig: {
-    width: 56,
-    height: 56,
+    alignItems: 'center',
+    backgroundColor: 'rgba(0,92,130,0.08)',
+    borderColor: 'transparent',
     borderRadius: 16,
-    justifyContent: "center",
-    alignItems: "center",
     borderWidth: 0,
-    borderColor: "transparent",
-    backgroundColor: "rgba(0,92,130,0.08)",
+    height: 56,
+    justifyContent: 'center',
+    width: 56,
     ...theme.shadow.small,
   },
   btnSkip: { backgroundColor: 'rgba(255, 69, 58, 0.3)' }, // Pale red
   btnJoin: { backgroundColor: 'rgba(52, 199, 89, 0.3)' }, // Pale green
   btnInfo: { backgroundColor: 'rgba(0, 92, 130, 0.3)' }, // Pale blue
   btnShare: {
-    backgroundColor: "rgba(0,92,130,0.08)",
-    borderColor: "transparent",
+    backgroundColor: 'rgba(0,92,130,0.08)',
+    borderColor: 'transparent',
   },
 
   btnDisabled: { opacity: 0.35 },
@@ -448,21 +546,21 @@ const styles = StyleSheet.create({
   icon: { fontSize: 28 },
   iconBig: { fontSize: 36 },
 
-  pressed: { transform: [{ scale: 0.985 }], opacity: 0.92 },
+  pressed: { opacity: 0.92, transform: [{ scale: 0.985 }] },
 
   modalOverlay: {
-    flex: 1,
     backgroundColor: theme.colors.scrimStrong,
-    justifyContent: "flex-end",
+    flex: 1,
+    justifyContent: 'flex-end',
   },
   modal: {
     backgroundColor: theme.colors.bg1,
+    borderColor: theme.colors.border,
     borderTopLeftRadius: theme.radius.xl,
     borderTopRightRadius: theme.radius.xl,
-    padding: theme.space.lg,
-    maxHeight: "82%",
     borderWidth: 1,
-    borderColor: theme.colors.border,
+    maxHeight: '82%',
+    padding: theme.space.lg,
   },
   modalTitle: {
     ...theme.type.displayMedium,
@@ -481,15 +579,15 @@ const styles = StyleSheet.create({
     lineHeight: 22,
   },
   closeBtn: {
-    marginTop: theme.space.sm,
+    alignItems: 'center',
     backgroundColor: theme.colors.primaryDeep,
     borderRadius: theme.radius.md,
+    marginTop: theme.space.sm,
     paddingVertical: theme.space.sm,
-    alignItems: "center",
     ...theme.shadow.glowPrimary,
   },
   closeText: {
     ...theme.type.labelLarge,
-    color: "#FFFFFF",
+    color: '#FFFFFF',
   },
 });

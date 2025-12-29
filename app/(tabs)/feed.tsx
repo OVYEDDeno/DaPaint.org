@@ -1,26 +1,26 @@
-import { useEffect, useState, useCallback } from "react";
-import { View, Text, StyleSheet, Alert, Platform, Image } from "react-native";
-import { useRouter } from "expo-router";
-import { supabase } from "../../lib/supabase";
-import { getSession } from "../../lib/api/auth";
+import { useRouter } from 'expo-router';
+import { useEffect, useState, useCallback } from 'react';
+import { View, Text, StyleSheet, Alert, Platform, Image } from 'react-native';
+
+import AdScreen from '../../components/swipe/AdScreen';
+import EmptyFeed from '../../components/swipe/EmptyFeed';
+import MatchScreen from '../../components/swipe/MatchScreen';
+import SwipeFeed from '../../components/swipe/SwipeFeed';
+import BackgroundLayer from '../../components/ui/BackgroundLayer';
+import FeedbackButton from '../../components/ui/FeedbackButton';
+import { theme } from '../../constants/theme';
+import { attachUserImagesToDaPaints } from '../../lib/api/attachUserImages';
+import { getSession } from '../../lib/api/auth';
 import {
   DaPaint,
   getAvailableDaPaints,
   getLuckyDaPaints,
   joinDaPaint,
-
   canUserJoinDaPaint,
-} from "../../lib/api/dapaints";
-import { attachUserImagesToDaPaints } from "../../lib/api/attachUserImages";
-import logger from "../../lib/logger";
-import SwipeFeed from "../../components/swipe/SwipeFeed";
-import EmptyFeed from "../../components/swipe/EmptyFeed";
-import AdScreen from "../../components/swipe/AdScreen";
-import MatchScreen from "../../components/swipe/MatchScreen";
-import { theme } from "../../constants/theme";
-import BackgroundLayer from "../../components/ui/BackgroundLayer";
-import FeedbackButton from "../../components/ui/FeedbackButton";
-import { userDataManager } from "../../lib/UserDataManager";
+} from '../../lib/api/dapaints';
+import logger from '../../lib/logger';
+import { supabase } from '../../lib/supabase';
+import { userDataManager } from '../../lib/UserDataManager';
 
 const WINSTREAK_GOAL = 30;
 // Increase cache TTL from 60s to 5 minutes to reduce API calls
@@ -50,7 +50,7 @@ const updateFeedCache = (userId: string, feed: DaPaint[]) => {
 
 export default function FeedScreen() {
   const router = useRouter();
-  const [feedMode, setFeedMode] = useState<"feed" | "lucky">("feed");
+  const [feedMode, setFeedMode] = useState<'feed' | 'lucky'>('feed');
   const [dapaints, setDaPaints] = useState<DaPaint[]>([]);
   const [userData, setUserData] = useState<any>(null);
 
@@ -63,11 +63,11 @@ export default function FeedScreen() {
   useEffect(() => {
     // Hide tab bar when ad is showing for full-screen experience
     const globalAny: any = global;
-    if (typeof globalAny !== "undefined" && globalAny.setTabBarVisibility) {
+    if (typeof globalAny !== 'undefined' && globalAny.setTabBarVisibility) {
       globalAny.setTabBarVisibility(!showAd);
     }
     return () => {
-      if (typeof globalAny !== "undefined" && globalAny.setTabBarVisibility) {
+      if (typeof globalAny !== 'undefined' && globalAny.setTabBarVisibility) {
         globalAny.setTabBarVisibility(true);
       }
     };
@@ -78,33 +78,31 @@ export default function FeedScreen() {
       const userId = userData?.id;
       if (!userId) return;
 
-      logger.debug("Feed Query Debug Info:");
-      logger.debug("User ID:", userId);
-      logger.debug("User Winstreak:", userData?.current_winstreak);
-      logger.debug("User Zipcode:", userData?.zipcode);
-      logger.debug("User City:", userData?.city);
+      logger.debug('Feed Query Debug Info:');
+      logger.debug('User ID:', userId);
+      logger.debug('User Winstreak:', userData?.current_winstreak);
+      logger.debug('User Zipcode:', userData?.zipcode);
+      logger.debug('User City:', userData?.city);
 
       const feedListRaw = await getAvailableDaPaints(userId);
-      logger.debug("Feed results count:", feedListRaw.length);
-      
+      logger.debug('Feed results count:', feedListRaw.length);
+
       const feedList = await attachUserImagesToDaPaints(feedListRaw);
       setDaPaints(feedList);
 
-      setFeedMode("feed");
+      setFeedMode('feed');
       updateFeedCache(userId, feedList);
 
-      logger.debug("✅ Results found:", feedList.length);
+      logger.debug('✅ Results found:', feedList.length);
       if (feedList.length === 0) {
-        logger.debug("⚠️ No DaPaints found with these filters");
+        logger.debug('⚠️ No DaPaints found with these filters');
       }
     } catch (error) {
-      logger.error("Error loading feed:", error);
-      Alert.alert("Error", "Failed to load your feed. Please try again.");
+      logger.error('Error loading feed:', error);
+      Alert.alert('Error', 'Failed to load your feed. Please try again.');
       setDaPaints([]);
     }
   }, [userData]);
-
-
 
   const loadLuckyDaPaints = useCallback(async () => {
     try {
@@ -114,10 +112,10 @@ export default function FeedScreen() {
       const luckyListRaw = await getLuckyDaPaints(userId);
       const luckyList = await attachUserImagesToDaPaints(luckyListRaw);
       setDaPaints(luckyList);
-      setFeedMode("lucky");
+      setFeedMode('lucky');
     } catch (error) {
-      logger.error("Error loading lucky feed:", error);
-      Alert.alert("Error", "Failed to load lucky feed. Please try again.");
+      logger.error('Error loading lucky feed:', error);
+      Alert.alert('Error', 'Failed to load lucky feed. Please try again.');
     }
   }, [userData]);
 
@@ -126,9 +124,9 @@ export default function FeedScreen() {
       try {
         const session = await getSession();
         if (!session) {
-          logger.debug("No session found, redirecting to login");
+          logger.debug('No session found, redirecting to login');
           await userDataManager.clearCache();
-          router.replace("/");
+          router.replace('/');
           return;
         }
 
@@ -139,8 +137,8 @@ export default function FeedScreen() {
 
         const freshData = await userDataManager.getUserData(true);
         if (!freshData) {
-          logger.debug("No user data found, redirecting to login");
-          router.replace("/");
+          logger.debug('No user data found, redirecting to login');
+          router.replace('/');
           return;
         }
         setUserData(freshData);
@@ -153,8 +151,8 @@ export default function FeedScreen() {
           setHasLoaded(false);
         }
       } catch (error) {
-        logger.error("Error loading user data:", error);
-        router.replace("/");
+        logger.error('Error loading user data:', error);
+        router.replace('/');
       }
     };
 
@@ -162,13 +160,13 @@ export default function FeedScreen() {
   }, [router]);
 
   const [hasLoaded, setHasLoaded] = useState(false);
-  
+
   useEffect(() => {
     if (userData && !hasLoaded) {
       const cached = getCachedFeed(userData.id);
       if (cached) {
         setDaPaints(cached.feed);
-        setFeedMode("feed");
+        setFeedMode('feed');
       }
       loadFeed();
       setHasLoaded(true);
@@ -187,16 +185,16 @@ export default function FeedScreen() {
           event: 'UPDATE',
           schema: 'public',
           table: 'users',
-          filter: `id=eq.${userData.id}`
+          filter: `id=eq.${userData.id}`,
         },
-        async (payload) => {
+        async payload => {
           // Update local user data when profile changes
           const updatedUser = (payload as any).new;
           setUserData(updatedUser);
-          
+
           // Also update the cached user data in userDataManager
           userDataManager.updateCachedUserData(updatedUser);
-          
+
           // Only reload feed if winstreak changed significantly (to avoid continuous reloads)
           if (userData.current_winstreak !== updatedUser.current_winstreak) {
             setHasLoaded(false); // Allow feed to reload on next render
@@ -210,21 +208,19 @@ export default function FeedScreen() {
     };
   }, [userData?.id, userData?.current_winstreak]);
 
-
-
   const handleCreateDaPaint = () => {
     // Navigate to the active tab with a flag to show ad
-    router.push("/(tabs)/active?fromCreate=true");
+    router.push('/(tabs)/active?fromCreate=true');
   };
-  
+
   const handleFeelingLucky = () => {
     // Load DaPaints from different zipcodes regardless of winstreak when feeling lucky
     if (userData?.id) {
       loadLuckyDaPaints();
     }
   };
-  
-  const handleGoToActive = () => router.push("/(tabs)/active?fromMatch=true");
+
+  const handleGoToActive = () => router.push('/(tabs)/active?fromMatch=true');
 
   const handleSwipeLeft = (dapaint: DaPaint) => {
     logger.debug(`Swiped left on ${dapaint.dapaint}`);
@@ -236,30 +232,20 @@ export default function FeedScreen() {
 
     const session = await getSession();
     if (!session || !userData?.id) {
-      router.replace("/");
+      router.replace('/');
       return;
     }
 
     // Guard: Check if user can join with detailed 48-hour logic
     const joinCheck = await canUserJoinDaPaint(userData.id);
     if (!joinCheck.canJoin) {
-      Alert.alert(
-        "Action Required",
-        joinCheck.message,
-        [{ text: "OK" }]
-      );
+      Alert.alert('Action Required', joinCheck.message, [{ text: 'OK' }]);
       return;
     }
 
     setPendingMatch(dapaint);
     setShowAd(true);
   };
-
-
-
-
-
-
 
   const handleAdComplete = useCallback(() => {
     setShowAd(false);
@@ -269,14 +255,18 @@ export default function FeedScreen() {
     const processJoin = async () => {
       try {
         setJoining(true);
-        const result = await joinDaPaint(pendingMatch.id, userData.id, userData.display_name);
+        const result = await joinDaPaint(
+          pendingMatch.id,
+          userData.id,
+          userData.display_name
+        );
 
         if (!result.success) {
           // Handle the case where user is already in an active DaPaint
           if (result.currentDaPaint) {
-            Alert.alert("Already in a DaPaint", result.message);
+            Alert.alert('Already in a DaPaint', result.message);
           } else {
-            Alert.alert("Cannot Join", result.message);
+            Alert.alert('Cannot Join', result.message);
           }
           setPendingMatch(null);
           return;
@@ -285,9 +275,9 @@ export default function FeedScreen() {
         setMatchedDaPaint(pendingMatch);
         setPendingMatch(null);
       } catch (error: any) {
-        const fallback = "Failed to join DaPaint";
+        const fallback = 'Failed to join DaPaint';
         let errorMsg: string =
-          (typeof error === "string" && error) ||
+          (typeof error === 'string' && error) ||
           error?.message ||
           error?.error_description ||
           error?.details ||
@@ -297,19 +287,28 @@ export default function FeedScreen() {
         if (errorMsg === fallback) {
           try {
             const maybeJson = JSON.stringify(error);
-            if (maybeJson && maybeJson !== "{}") errorMsg = maybeJson;
+            if (maybeJson && maybeJson !== '{}') errorMsg = maybeJson;
           } catch {
             // ignore
           }
         }
 
-        logger.error("Error joining DaPaint:", errorMsg, error);
-        if (typeof errorMsg === "string" && errorMsg.includes("already taken")) {
-          Alert.alert("Oops!", "Someone just joined this DaPaint!");
-        } else if (typeof errorMsg === "string" && errorMsg.includes("already in an active DaPaint")) {
-          Alert.alert("Already Joined", "You're already in an active DaPaint. Please complete or leave it first.");
+        logger.error('Error joining DaPaint:', errorMsg, error);
+        if (
+          typeof errorMsg === 'string' &&
+          errorMsg.includes('already taken')
+        ) {
+          Alert.alert('Oops!', 'Someone just joined this DaPaint!');
+        } else if (
+          typeof errorMsg === 'string' &&
+          errorMsg.includes('already in an active DaPaint')
+        ) {
+          Alert.alert(
+            'Already Joined',
+            "You're already in an active DaPaint. Please complete or leave it first."
+          );
         } else {
-          Alert.alert("Error", errorMsg);
+          Alert.alert('Error', errorMsg);
         }
 
         setPendingMatch(null);
@@ -328,19 +327,13 @@ export default function FeedScreen() {
   }, [loadFeed]);
 
   const currentDaPaints = dapaints;
-  const isExploreEmpty = feedMode === "lucky" && dapaints.length === 0;
+  const isExploreEmpty = feedMode === 'lucky' && dapaints.length === 0;
   const winstreakValue = userData?.current_winstreak ?? 0;
   const winstreakProgress = Math.min(1, winstreakValue / WINSTREAK_GOAL);
 
   if (showAd) {
-    return (
-      <AdScreen
-        onComplete={handleAdComplete}
-      />
-    );
+    return <AdScreen onComplete={handleAdComplete} />;
   }
-
-
 
   if (matchedDaPaint) {
     return (
@@ -362,151 +355,159 @@ export default function FeedScreen() {
             <Text style={styles.progressBadgeText}>{winstreakValue}</Text>
           </View>
 
-        <View style={styles.barWrap}>
-          <View style={styles.progressTrack}>
-            <View style={[styles.progressFill, { width: `${winstreakProgress * 100}%` }]} />
+          <View style={styles.barWrap}>
+            <View style={styles.progressTrack}>
+              <View
+                style={[
+                  styles.progressFill,
+                  { width: `${winstreakProgress * 100}%` },
+                ]}
+              />
+            </View>
+            <Image
+              source={require('../../assets/logo.png')}
+              style={styles.logoOverlay}
+              resizeMode="contain"
+            />
           </View>
-          <Image source={require("../../assets/logo.png")} style={styles.logoOverlay} resizeMode="contain" />
-        </View>
 
-        <View style={styles.progressBadge}>
-          <Text style={styles.progressBadgeText}>{WINSTREAK_GOAL}</Text>
+          <View style={styles.progressBadge}>
+            <Text style={styles.progressBadgeText}>{WINSTREAK_GOAL}</Text>
+          </View>
         </View>
       </View>
 
-    </View>
+      {/* Content */}
+      {currentDaPaints.length === 0 ? (
+        <EmptyFeed
+          userWinstreak={winstreakValue}
+          userZipcode={userData?.zipcode || ''}
+          onCreateDaPaint={handleCreateDaPaint}
+          onFeelingLucky={handleFeelingLucky}
+          isExploreEmpty={isExploreEmpty}
+        />
+      ) : (
+        <SwipeFeed
+          dapaints={currentDaPaints}
+          onSwipeLeft={handleSwipeLeft}
+          onSwipeRight={handleSwipeRight}
+          topOffset={0}
+          onExhausted={() => {
+            if (feedMode === 'lucky') {
+              setFeedMode('feed');
+              setHasLoaded(false);
+              loadFeed();
+              return;
+            }
+            setDaPaints([]);
+          }}
+        />
+      )}
 
-    {/* Content */}
-    {currentDaPaints.length === 0 ? (
-      <EmptyFeed
-        userWinstreak={winstreakValue}
-        userZipcode={userData?.zipcode || ""}
-        onCreateDaPaint={handleCreateDaPaint}
-        onFeelingLucky={handleFeelingLucky}
-        isExploreEmpty={isExploreEmpty}
-      />
-    ) : (
-      <SwipeFeed
-        dapaints={currentDaPaints}
-        onSwipeLeft={handleSwipeLeft}
-        onSwipeRight={handleSwipeRight}
-        topOffset={0}
-        onExhausted={() => {
-          if (feedMode === "lucky") {
-            setFeedMode("feed");
-            setHasLoaded(false);
-            loadFeed();
-            return;
-          }
-          setDaPaints([]);
-        }}
-      />
-    )}
-    
-    {/* Feedback Button */}
-    <FeedbackButton visible={true} />
-  </View>
+      {/* Feedback Button */}
+      <FeedbackButton visible />
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
+  barWrap: {
+    alignItems: 'center',
     flex: 1,
+    justifyContent: 'center',
+    marginHorizontal: theme.space.md,
+    position: 'relative',
+  },
+  container: {
     backgroundColor: 'transparent',
+    flex: 1,
   },
   header: {
-    paddingTop: Platform.OS === "ios" ? 52 : 28,
-    paddingHorizontal: theme.space.md,
-    paddingBottom: theme.space.md,
+    alignItems: 'center',
     backgroundColor: 'transparent',
-    alignItems: "center",
     gap: theme.space.xs,
+    paddingBottom: theme.space.md,
+    paddingHorizontal: theme.space.md,
+    paddingTop: Platform.OS === 'ios' ? 52 : 28,
     zIndex: 10,
   },
-  progressRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    width: "100%",
-    gap: theme.space.md,
-  },
-  progressCluster: {
-    width: "100%",
-    maxWidth: 420,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    position: "relative",
-    paddingHorizontal: 0,
-  },
-  winstreakValue: {
-    ...theme.type.displaySmall,
-    color: theme.colors.primaryDeep,
-    fontWeight: "700",
-  },
-  barWrap: {
-    flex: 1,
-    alignItems: "center",
-    justifyContent: "center",
-    position: "relative",
-    marginHorizontal: theme.space.md,
-  },
-  progressTrack: {
-    width: "100%",
-    height: 16,
-    borderRadius: 12,
-    backgroundColor: theme.colors.surface,
-    borderWidth: 1,
-    borderColor: theme.colors.border,
-    overflow: "hidden",
-  },
-  progressFill: {
-    height: "100%",
-    borderRadius: 12,
-    backgroundColor: theme.colors.primaryDeep,
+  logo: {
+    height: 40,
+    width: 86,
   },
   logoOverlay: {
-    position: "absolute",
-    top: -10,
-    left: "50%",
-    marginLeft: -36,
-    width: 72,
     height: 32,
+    left: '50%',
+    marginLeft: -36,
+    position: 'absolute',
+    top: -10,
+    width: 72,
   },
   progressBadge: {
+    alignItems: 'center',
+    backgroundColor: theme.colors.surface,
+    borderColor: theme.colors.border,
+    borderRadius: theme.radius.full,
+    borderWidth: 1,
+    minWidth: 64,
     paddingHorizontal: theme.space.sm,
     paddingVertical: 6,
-    borderRadius: theme.radius.full,
-    backgroundColor: theme.colors.surface,
-    borderWidth: 1,
-    borderColor: theme.colors.border,
-    minWidth: 64,
-    alignItems: "center",
   },
   progressBadgeText: {
     ...theme.type.displaySmall,
     color: theme.colors.primaryDeep,
-    fontWeight: "700",
+    fontWeight: '700',
   },
-  logo: {
-    width: 86,
-    height: 40,
+  progressCluster: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    maxWidth: 420,
+    paddingHorizontal: 0,
+    position: 'relative',
+    width: '100%',
+  },
+  progressFill: {
+    backgroundColor: theme.colors.primaryDeep,
+    borderRadius: 12,
+    height: '100%',
+  },
+  progressRow: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    gap: theme.space.md,
+    justifyContent: 'space-between',
+    width: '100%',
+  },
+  progressTrack: {
+    backgroundColor: theme.colors.surface,
+    borderColor: theme.colors.border,
+    borderRadius: 12,
+    borderWidth: 1,
+    height: 16,
+    overflow: 'hidden',
+    width: '100%',
   },
   settingsButton: {
-    position: "absolute",
-    top: Platform.OS === "ios" ? 52 : 28,
-    right: theme.space.md,
-    width: 46,
-    height: 46,
-    justifyContent: "center",
-    alignItems: "center",
-    borderRadius: theme.radius.full,
+    alignItems: 'center',
     backgroundColor: theme.colors.surface,
-    borderWidth: 1,
     borderColor: theme.colors.border,
+    borderRadius: theme.radius.full,
+    borderWidth: 1,
+    height: 46,
+    justifyContent: 'center',
+    position: 'absolute',
+    right: theme.space.md,
+    top: Platform.OS === 'ios' ? 52 : 28,
+    width: 46,
   },
   settingsIcon: {
-    fontSize: 22,
     color: theme.colors.textPrimary,
+    fontSize: 22,
+  },
+  winstreakValue: {
+    ...theme.type.displaySmall,
+    color: theme.colors.primaryDeep,
+    fontWeight: '700',
   },
 });

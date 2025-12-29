@@ -100,7 +100,9 @@ function RootLayout() {
 
             if (userError || !user) {
               // User doesn't exist in database - invalid session
-              logger.warn('Session exists but user not in database, clearing session');
+              logger.warn(
+                'Session exists but user not in database, clearing session'
+              );
               await signOut();
               setIsLoggedIn(false);
             } else {
@@ -142,7 +144,7 @@ function RootLayout() {
       data: { subscription },
     } = supabase.auth.onAuthStateChange(async (_event, session) => {
       logger.debug('Auth state changed:', _event);
-      
+
       if (session) {
         // Verify user exists before setting logged in
         try {

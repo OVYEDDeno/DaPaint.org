@@ -1,6 +1,6 @@
+import * as Sentry from '@sentry/react-native';
 import React from 'react';
 import { View, Text, Button, StyleSheet, Platform } from 'react-native';
-import * as Sentry from '@sentry/react-native';
 
 interface Props {
   children: React.ReactNode;
@@ -24,7 +24,7 @@ class ErrorBoundary extends React.Component<Props, State> {
 
   override componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
     console.error('Error caught by boundary:', error, errorInfo);
-    
+
     // Capture the error with Sentry
     Sentry.captureException(error, {
       contexts: {
@@ -42,7 +42,12 @@ class ErrorBoundary extends React.Component<Props, State> {
   override render() {
     if (this.state.hasError && this.state.error) {
       const FallbackComponent = this.props.fallback || DefaultErrorFallback;
-      return <FallbackComponent error={this.state.error} resetError={this.resetError} />;
+      return (
+        <FallbackComponent
+          error={this.state.error}
+          resetError={this.resetError}
+        />
+      );
     }
 
     return this.props.children;
@@ -54,7 +59,10 @@ interface FallbackProps {
   resetError: () => void;
 }
 
-const DefaultErrorFallback: React.FC<FallbackProps> = ({ error, resetError }) => {
+const DefaultErrorFallback: React.FC<FallbackProps> = ({
+  error,
+  resetError,
+}) => {
   return (
     <View style={styles.container}>
       <View style={styles.content}>
@@ -70,19 +78,23 @@ const DefaultErrorFallback: React.FC<FallbackProps> = ({ error, resetError }) =>
 };
 
 const styles = StyleSheet.create({
+  buttonContainer: {
+    marginTop: 10,
+    width: '100%',
+  },
   container: {
+    alignItems: 'center',
+    backgroundColor: '#f5f5f5',
     flex: 1,
     justifyContent: 'center',
-    alignItems: 'center',
     padding: 20,
-    backgroundColor: '#f5f5f5',
   },
   content: {
+    alignItems: 'center',
     backgroundColor: 'white',
     borderRadius: 8,
     padding: 20,
     width: '100%',
-    alignItems: 'center',
     ...Platform.select({
       web: {
         boxShadow: '0px 2px 4px rgba(0,0,0,0.25)',
@@ -99,28 +111,24 @@ const styles = StyleSheet.create({
       },
     }),
   },
+  errorText: {
+    color: '#7f8c8d',
+    fontSize: 12,
+    fontStyle: 'italic',
+    marginBottom: 15,
+    textAlign: 'center',
+  },
+  message: {
+    color: '#333',
+    fontSize: 14,
+    marginBottom: 15,
+    textAlign: 'center',
+  },
   title: {
+    color: '#e74c3c',
     fontSize: 18,
     fontWeight: 'bold',
     marginBottom: 10,
-    color: '#e74c3c',
-  },
-  message: {
-    fontSize: 14,
-    textAlign: 'center',
-    marginBottom: 15,
-    color: '#333',
-  },
-  errorText: {
-    fontSize: 12,
-    color: '#7f8c8d',
-    marginBottom: 15,
-    textAlign: 'center',
-    fontStyle: 'italic',
-  },
-  buttonContainer: {
-    marginTop: 10,
-    width: '100%',
   },
 });
 
